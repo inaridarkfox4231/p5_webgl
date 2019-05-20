@@ -12,6 +12,7 @@
 'use strict';
 let myShader;
 let isLoop = true;
+let poincare = false; // trueのときポアンカレモード
 
 // 色の配列
 let ci = 0; // colorIndex.
@@ -74,48 +75,58 @@ let fs =
    vec2 w = vec2((a * d + b * c) * z.x + (a * c) * (z.x * z.x + z.y * z.y) + b * d, z.y);\
    return w / (pow(c * z.x + d, 2.0) + pow(c * z.y, 2.0));\
  }\
-    float reflection_3(){\
-      mat2 ref0 = mat2(-1.0, 0.0, 0.0, 1.0);\
-      float time = 300.0 - abs(300.0 - mod(fc, 600.0));\
-      float r = 0.5 + (time * time / 300.0);\
-      float m = patternArray.x;\
-      float n = patternArray.y;\
-      float l = patternArray.z;\
-      float theta = PI / m;\
-      float phi = PI / n;\
-      float psi = PI / l;\
-      float k = calc_ratio(theta, phi, psi);\
-      float y = (k + sqrt(k * k - 1.0)) * r;\
-      float s = k * y / cos(theta);\
-      float t = k * y / cos(phi);\
-      float a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;\
-      float b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;\
-      float count = 0.0;\
-      bool arrived = false;\
-      vec2 p = vec2(0.0, 1.0) + ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);\
-      float diff = time * PI / 300.0;\
-      p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));\
-      for(float i = 0.0; i < ITERATIONS; i += 1.0){\
-        if(pow(p.x, 2.0) + pow(p.y, 2.0) < r * r){\
-          p = inversion(p, r, 0.0);\
-          count += 1.0;\
-        }else if(pow(p.x - a, 2.0) + pow(p.y, 2.0) > s * s){\
-          p = inversion(p, s, a);\
-          count += 1.0;\
-        }else if(pow(p.x - b, 2.0) + pow(p.y, 2.0) > t * t){\
-          p = inversion(p, t, b);\
-          count += 1.0;\
-        }else{\
-          arrived = true;\
-        }\
-        if(arrived){ break; }\
-      }\
-      return mod(count, 2.0);\
-    }\
+ vec2 poincare_to_half(vec2 p){\
+   float norm = pow(p.x, 2.0) + pow(p.y, 2.0);\
+   return vec2(-2.0 * p.y, (1.0 - norm)) / (1.0 - 2.0 * p.x + norm);\
+ }\
+ float reflection_3(){\
+   mat2 ref0 = mat2(-1.0, 0.0, 0.0, 1.0);\
+   float time = 300.0 - abs(300.0 - mod(fc, 600.0));\
+   float r = 0.5 + (time * time / 300.0);\
+   float m = patternArray.x;\
+   float n = patternArray.y;\
+   float l = patternArray.z;\
+   float theta = PI / m;\
+   float phi = PI / n;\
+   float psi = PI / l;\
+   float k = calc_ratio(theta, phi, psi);\
+   float y = (k + sqrt(k * k - 1.0)) * r;\
+   float s = k * y / cos(theta);\
+   float t = k * y / cos(phi);\
+   float a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;\
+   float b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;\
+   float count = 0.0;\
+   bool arrived = false;\
+   vec2 p = ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);\
+   if(mode < 0.5){\
+     p = p + vec2(0.0, 1.0);\
+   }else{\
+     if(pow(p.x, 2.0) + pow(p.y, 2.0) > 0.999){ return 2.0; }\
+     p = poincare_to_half(p);\
+   }\
+   float diff = time * PI / 300.0;\
+     p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));\
+     for(float i = 0.0; i < ITERATIONS; i += 1.0){\
+       if(pow(p.x, 2.0) + pow(p.y, 2.0) < r * r){\
+         p = inversion(p, r, 0.0);\
+         count += 1.0;\
+       }else if(pow(p.x - a, 2.0) + pow(p.y, 2.0) > s * s){\
+         p = inversion(p, s, a);\
+         count += 1.0;\
+       }else if(pow(p.x - b, 2.0) + pow(p.y, 2.0) > t * t){\
+         p = inversion(p, t, b);\
+         count += 1.0;\
+       }else{\
+         arrived = true;\
+       }\
+       if(arrived){ break; }\
+     }\
+     return mod(count, 2.0);\
+   }\
  void main(){\
    if(mode < 1.0){\
      float ref = reflection_3();\
-     gl_FragColor = vec4((1.0 - ref) * color_1 + ref * color_2, 1.0);\
+     gl_FragColor = vec4((1.0 - step(2.0, ref)) * ((1.0 - ref) * color_1 + ref * color_2), 1.0);\
    }else{\
      gl_FragColor = texture2D(button, vTextureCoord);\
    }\
@@ -148,8 +159,12 @@ function setup(){
 function draw(){
   background(70, 30, 100);
   myShader.setUniform('fc', frameCount);
-  // タイリング描画モード
-  myShader.setUniform('mode', 0.0);
+  // タイリング描画モード(0.0で通常、0.5でポアンカレ、的な？)
+  if(!poincare){
+    myShader.setUniform('mode', 0.0); // 上半平面モード
+  }else{
+    myShader.setUniform('mode', 0.5); // ポアンカレモデルモード
+  }
   quad(-1, 1, -1, -0.6, 1, -0.6, 1, 1);
   // ボタン描画モード
   myShader.setUniform('mode', 1.0);
@@ -218,6 +233,8 @@ function mouseClicked(){
     console.log([m, n, l]);
   }else if(mouseX > 544 && mouseX < 744){
     // ポアンカレ円板に移行する。また今度。
+    if(!poincare){ poincare = true; img[2] = allImg[4]; }
+    else{ poincare = false; img[2] = allImg[2]; }
     return;
   }
 }
