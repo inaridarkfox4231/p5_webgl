@@ -13,6 +13,14 @@
 let myShader;
 let isLoop = true;
 
+// 色の配列
+let ci = 0; // colorIndex.
+let hArray = [0.65, 0.00, 0.38, 0.05, 0.55, 0.83, 0.06, 0.59, 0.20, 0.00, 0.94];
+let sArray = [0.69, 1.00, 0.80, 0.58, 1.00, 0.55, 0.91, 0.40, 0.88, 0.00, 0.73];
+let vArray = [0.80, 1.00, 0.69, 0.67, 0.90, 0.64, 1.00, 0.74, 0.80, 0.49, 1.00];
+let sDiffArray = [-0.32, -0.51, -0.41, -0.34, -0.59, -0.35, -0.41, -0.26, -0.37, 0.00, -0.33];
+let vDiffArray = [0.07, 0.00, 0.22, 0.18, 0.10, 0.21, 0.00, 0.16, 0.14, 0.30, 0.00];
+
 let allImg = new Array(5);
 let img = new Array(3);
 
@@ -35,17 +43,28 @@ let vs =
 
 // sltfはSL2(R)による一次分数変換で、行列[a, b;c, d]によるもの。
 // あとは3つの角度とか色とかクリックで変更できるようにしたいわね
+
+// uniform変数
+// float fc: フレームカウンタ
+// vec3 color_1: 基本領域に偶数回で移るエリアの色。基本的に濃い。
+// vec3 color_2: 基本領域に奇数回で移るエリアの色。基本的に薄い。
+// vec3 patternArray: 整数の3つ組[m, n, l]で、lが一番小さい。また、1/m + 1/n + 1/l < PIを満たす。
+// sampler2D button: ボタンのイメージ。
+// float mode: タイリングを描くか、描くとしたらどっちのモードか、あるいはボタンを描くか、の制御。
 let fs =
 "precision mediump float;\
  uniform vec2 resolution;\
  uniform float fc;\
+ uniform vec3 color_1;\
+ uniform vec3 color_2;\
+ uniform vec3 patternArray;\
  uniform sampler2D button;\
  varying vec2 vTextureCoord;\
  uniform float mode;\
  const float ITERATIONS = 64.0;\
  const float PI = 3.14159;\
- float calc_ratio(float theta, float phi){\
-   return (cos(phi) + sqrt(pow(cos(phi), 2.0) - pow(sin(theta), 2.0))) / pow(sin(theta), 2.0);\
+ float calc_ratio(float theta, float phi, float psi){\
+   return sqrt(pow(cos(theta), 2.0) + pow(cos(phi), 2.0) + 2.0 * cos(theta) * cos(phi) * cos(psi)) / sin(psi);\
  }\
  vec2 inversion(vec2 q, float r, float c){\
    float factor = pow(r, 2.0) / (pow(q.x - c, 2.0) + pow(q.y, 2.0));\
@@ -55,47 +74,48 @@ let fs =
    vec2 w = vec2((a * d + b * c) * z.x + (a * c) * (z.x * z.x + z.y * z.y) + b * d, z.y);\
    return w / (pow(c * z.x + d, 2.0) + pow(c * z.y, 2.0));\
  }\
- float reflection_3(){\
-   mat2 ref0 = mat2(-1.0, 0.0, 0.0, 1.0);\
-   float t = 300.0 - abs(300.0 - mod(fc, 600.0));\
-   float r = 0.3 + (t * t / 300.0);\
-   float m = 4.0;\
-   float n = 5.0;\
-   float theta = PI / m;\
-   float phi = PI / n;\
-   float count = 0.0;\
-   bool arrived = false;\
-   float s = calc_ratio(theta, phi) * r;\
-   float a = -s * cos(theta);\
-   vec2 p = vec2(0.0, 1.0) + ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);\
-   float diff = t * PI / 300.0;\
-   p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));\
-   for(float i = 0.0; i < ITERATIONS; i += 1.0){\
-     if(p.x < 0.0){\
-       p = ref0 * p;\
-       count += 1.0;\
-     }else if(length(p) < r){\
-       p = inversion(p, r, 0.0);\
-       count += 1.0;\
-     }else if(length(p - vec2(a, 0.0)) > s){\
-       p = inversion(p, s, a);\
-       count += 1.0;\
-     }else{\
-       arrived = true;\
-     }\
-     if(arrived){ break; }\
-   }\
-   return mod(count, 2.0);\
- }\
- vec3 hsb2rgb(vec3 c){\
-     vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0 );\
-     rgb = rgb * rgb * (3.0 - 2.0 * rgb);\
-     return c.z * mix(vec3(1.0), rgb, c.y);\
- }\
+    float reflection_3(){\
+      mat2 ref0 = mat2(-1.0, 0.0, 0.0, 1.0);\
+      float time = 300.0 - abs(300.0 - mod(fc, 600.0));\
+      float r = 0.5 + (time * time / 300.0);\
+      float m = patternArray.x;\
+      float n = patternArray.y;\
+      float l = patternArray.z;\
+      float theta = PI / m;\
+      float phi = PI / n;\
+      float psi = PI / l;\
+      float k = calc_ratio(theta, phi, psi);\
+      float y = (k + sqrt(k * k - 1.0)) * r;\
+      float s = k * y / cos(theta);\
+      float t = k * y / cos(phi);\
+      float a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;\
+      float b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;\
+      float count = 0.0;\
+      bool arrived = false;\
+      vec2 p = vec2(0.0, 1.0) + ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);\
+      float diff = time * PI / 300.0;\
+      p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));\
+      for(float i = 0.0; i < ITERATIONS; i += 1.0){\
+        if(pow(p.x, 2.0) + pow(p.y, 2.0) < r * r){\
+          p = inversion(p, r, 0.0);\
+          count += 1.0;\
+        }else if(pow(p.x - a, 2.0) + pow(p.y, 2.0) > s * s){\
+          p = inversion(p, s, a);\
+          count += 1.0;\
+        }else if(pow(p.x - b, 2.0) + pow(p.y, 2.0) > t * t){\
+          p = inversion(p, t, b);\
+          count += 1.0;\
+        }else{\
+          arrived = true;\
+        }\
+        if(arrived){ break; }\
+      }\
+      return mod(count, 2.0);\
+    }\
  void main(){\
-   float ref = reflection_3();\
-   if(mode == 0.0){\
-     gl_FragColor = vec4(hsb2rgb(vec3(0.70, 0.3 + 0.7 * ref, 1.0)), 1.0);\
+   if(mode < 1.0){\
+     float ref = reflection_3();\
+     gl_FragColor = vec4((1.0 - ref) * color_1 + ref * color_2, 1.0);\
    }else{\
      gl_FragColor = texture2D(button, vTextureCoord);\
    }\
@@ -118,6 +138,10 @@ function setup(){
   myShader = createShader(vs, fs);
   shader(myShader);
   myShader.setUniform('resolution', [768, 384]);
+  ci = randomInt(11);
+  myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
+  myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
+  myShader.setUniform('patternArray', [4.0, 4.0, 4.0]);
   //noLoop();
 }
 
@@ -149,18 +173,56 @@ function createButton(dx, dy, button_x, button_y, index){
      );
 }
 
+// hsv形式の各パラメータが0～1の配列をrgbのそれに変換する。
+// クリックの度にこれが呼び出される感じ。
+function hsv_to_rgb(h, s, v){
+  let border = 6.0 * h;
+  if(border < 1.0){
+    return [v, border * s * v + (1.0 - s) * v, (1.0 - s) * v];
+  }else if(border < 2.0){
+    return [(2.0 - border) * s * v + (1.0 - s) * v, v, (1.0 - s) * v];
+  }else if(border < 3.0){
+    return [(1.0 - s) * v, v, (border - 2.0) * s * v + (1.0 - s) * v];
+  }else if(border < 4.0){
+    return [(1.0 - s) * v, (4.0 - border) * s * v + (1.0 - s) * v, v];
+  }else if(border < 5.0){
+    return [(border - 4.0) * s * v + (1.0 - s) * v, (1.0 - s) * v, v];
+  }else{
+    return [v, (1.0 - s) * v, (6.0 - border) * s * v + (1.0 - s) * v];
+  }
+}
+
 function mouseClicked(){
-  // クリックで止めたり動かしたり
+  // ボタンごとに挙動を変える
   if(mouseY < 392 || mouseY > 472){ return; }
   if(mouseX > 24 && mouseX < 224){
+    // ストップ/スタート
     if(isLoop){ noLoop(); isLoop = false; img[0] = allImg[3]; }
     else{ loop(); isLoop = true; img[0] = allImg[0]; }
+  }else if(mouseX > 284 && mouseX < 484){
+    // ポーズ中はパターン変更禁止
+    if(!isLoop){ return; }
+    // クリックで色が変わるよ
+    let ci_diff = randomInt(10) + 1; // colorIndexの変化(1～10).
+    ci = (ci + ci_diff) % 11;
+    myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
+    myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
+    // パターンも、変わるよ(mが最大にする)
+    // 2になるのはたかだか1つだけ。mやnが2にならないようにこの条件を付ける。
+    // mやnが2になると円弧が直線になってしまう0割りのバグが発生する。よって2になる可能性のあるものをlのみとする。
+    let l = randomInt(12) + 2; // 2～13のどれか
+    let n = randomInt(11) + 3; // 3～13のどれか
+    let roof = max((l * n) / (l * n - l - n), 3);
+    let m = randomInt(14 - roof) + roof; // roof～13のどれか
+    myShader.setUniform('patternArray', [m, n, l]);
+    console.log([m, n, l]);
+  }else if(mouseX > 544 && mouseX < 744){
+    // ポアンカレ円板に移行する。また今度。
+    return;
   }
-  /*if(isLoop){
-    noLoop();
-    isLoop = false;
-  }else{
-    loop();
-    isLoop = true;
-  }*/
+}
+
+// 0～n-1のどれかを出す
+function randomInt(n){
+  return Math.floor(random(n));
 }
