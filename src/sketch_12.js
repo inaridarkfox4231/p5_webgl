@@ -232,6 +232,8 @@ function mouseClicked(){
     myShader.setUniform('patternArray', [m, n, l]);
     console.log([m, n, l]);
   }else if(mouseX > 544 && mouseX < 744){
+    // ポーズ中はパターン変更禁止
+    if(!isLoop){ return; }
     // ポアンカレ円板に移行する。また今度。
     if(!poincare){ poincare = true; img[2] = allImg[4]; }
     else{ poincare = false; img[2] = allImg[2]; }
