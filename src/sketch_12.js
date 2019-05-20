@@ -13,7 +13,8 @@
 let myShader;
 let isLoop = true;
 
-let img;
+let allImg = new Array(5);
+let img = new Array(3);
 
 // バーテックスシェーダ
 // 普通に情報を渡すだけでいい
@@ -104,7 +105,10 @@ let fs =
 // 0.00, 0.10, 0.17, 0.35, 0.52, 0.64, 0.70, 0.80; ですね。
 
 function preload(){
-  img = loadImage("./assets/hellowen.png"); // 200x80.
+  for(let i = 0; i < 5; i++){
+    allImg[i] = loadImage("./assets/text" + i + ".png");
+  }
+  for(let i = 0; i < 3; i++){ img[i] = allImg[i]; }
 }
 
 function setup(){
@@ -122,29 +126,22 @@ function draw(){
   myShader.setUniform('fc', frameCount);
   // タイリング描画モード
   myShader.setUniform('mode', 0.0);
-  // ボタン描画モード
   quad(-1, 1, -1, -0.6, 1, -0.6, 1, 1);
+  // ボタン描画モード
   myShader.setUniform('mode', 1.0);
-  createButton(-100.0, -232.0, 200.0, 80.0);
-  /*let loc_x = 2 * dx / width;
-  let loc_y = 2 * dy / height;
-  myShader.setUniform('loc', [loc_x, loc_y]);
-  myShader.setUniform('button', img);
-  quad(loc_x,                        loc_y,
-       loc_x + 2 * button_x / width, loc_y,
-       loc_x + 2 * button_x / width, 2 * button_y / height + loc_y,
-       loc_x,                        2 * button_y / height + loc_y
-     );*/
+  createButton(-360.0, -232.0, 200.0, 80.0, 0);
+  createButton(-100.0, -232.0, 200.0, 80.0, 1);
+  createButton(160.0, -232.0, 200.0, 80.0, 2);
 }
 
 // dx, dy: ピクセルベースでの中心からのボタンの左下位置のずれ（右、上が正方向）
 // button_x, button_y: ボタンのよこはばとたてはば
-function createButton(dx, dy, button_x, button_y){
+function createButton(dx, dy, button_x, button_y, index){
   // 中心からピクセルで(dx, dy)の位置を右下とするrect状の横幅button_x, 縦幅button_yのボタンを描画する
   let loc_x = 2 * dx / width;
   let loc_y = 2 * dy / height;
   myShader.setUniform('loc', [loc_x, loc_y]);
-  myShader.setUniform('button', img);
+  myShader.setUniform('button', img[index]);
   quad(loc_x,                        loc_y,
        loc_x + 2 * button_x / width, loc_y,
        loc_x + 2 * button_x / width, 2 * button_y / height + loc_y,
@@ -154,11 +151,16 @@ function createButton(dx, dy, button_x, button_y){
 
 function mouseClicked(){
   // クリックで止めたり動かしたり
-  if(isLoop){
+  if(mouseY < 392 || mouseY > 472){ return; }
+  if(mouseX > 24 && mouseX < 224){
+    if(isLoop){ noLoop(); isLoop = false; img[0] = allImg[3]; }
+    else{ loop(); isLoop = true; img[0] = allImg[0]; }
+  }
+  /*if(isLoop){
     noLoop();
     isLoop = false;
   }else{
     loop();
     isLoop = true;
-  }
+  }*/
 }
