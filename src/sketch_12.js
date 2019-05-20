@@ -227,7 +227,7 @@ function mouseClicked(){
     // mやnが2になると円弧が直線になってしまう0割りのバグが発生する。よって2になる可能性のあるものをlのみとする。
     let l = randomInt(12) + 2; // 2～13のどれか
     let n = randomInt(11) + 3; // 3～13のどれか
-    let roof = max((l * n) / (l * n - l - n), 3);
+    let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, 3); // しまった、1を足さないとだめだこれ。
     let m = randomInt(14 - roof) + roof; // roof～13のどれか
     myShader.setUniform('patternArray', [m, n, l]);
     console.log([m, n, l]);
