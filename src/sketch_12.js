@@ -13,13 +13,18 @@
 let myShader;
 let isLoop = true;
 
+let img;
+
 // バーテックスシェーダ
 // 普通に情報を渡すだけでいい
 let vs =
 "precision mediump float;\
  attribute vec3 aPosition;\
+ varying vec2 vTextureCoord;\
+ uniform vec2 loc;\
  void main(){\
    gl_Position = vec4(aPosition, 1.0);\
+   vTextureCoord = vec2((aPosition.x - loc.x) * (384.0 / 200.0), 1.0 - (aPosition.y - loc.y) * (240.0 / 80.0));\
 }\
 ";
 
@@ -33,6 +38,9 @@ let fs =
 "precision mediump float;\
  uniform vec2 resolution;\
  uniform float fc;\
+ uniform sampler2D button;\
+ varying vec2 vTextureCoord;\
+ uniform float mode;\
  const float ITERATIONS = 64.0;\
  const float PI = 3.14159;\
  float calc_ratio(float theta, float phi){\
@@ -85,11 +93,19 @@ let fs =
  }\
  void main(){\
    float ref = reflection_3();\
-   gl_FragColor = vec4(hsb2rgb(vec3(0.70, 0.3 + 0.7 * ref, 1.0)), 1.0);\
+   if(mode == 0.0){\
+     gl_FragColor = vec4(hsb2rgb(vec3(0.70, 0.3 + 0.7 * ref, 1.0)), 1.0);\
+   }else{\
+     gl_FragColor = texture2D(button, vTextureCoord);\
+   }\
  }\
 ";
 
 // 0.00, 0.10, 0.17, 0.35, 0.52, 0.64, 0.70, 0.80; ですね。
+
+function preload(){
+  img = loadImage("./assets/hellowen.png"); // 200x80.
+}
 
 function setup(){
   createCanvas(768, 480, WEBGL);
@@ -104,7 +120,36 @@ function setup(){
 function draw(){
   background(70, 30, 100);
   myShader.setUniform('fc', frameCount);
+  // タイリング描画モード
+  myShader.setUniform('mode', 0.0);
+  // ボタン描画モード
   quad(-1, 1, -1, -0.6, 1, -0.6, 1, 1);
+  myShader.setUniform('mode', 1.0);
+  createButton(-100.0, -232.0, 200.0, 80.0);
+  /*let loc_x = 2 * dx / width;
+  let loc_y = 2 * dy / height;
+  myShader.setUniform('loc', [loc_x, loc_y]);
+  myShader.setUniform('button', img);
+  quad(loc_x,                        loc_y,
+       loc_x + 2 * button_x / width, loc_y,
+       loc_x + 2 * button_x / width, 2 * button_y / height + loc_y,
+       loc_x,                        2 * button_y / height + loc_y
+     );*/
+}
+
+// dx, dy: ピクセルベースでの中心からのボタンの左下位置のずれ（右、上が正方向）
+// button_x, button_y: ボタンのよこはばとたてはば
+function createButton(dx, dy, button_x, button_y){
+  // 中心からピクセルで(dx, dy)の位置を右下とするrect状の横幅button_x, 縦幅button_yのボタンを描画する
+  let loc_x = 2 * dx / width;
+  let loc_y = 2 * dy / height;
+  myShader.setUniform('loc', [loc_x, loc_y]);
+  myShader.setUniform('button', img);
+  quad(loc_x,                        loc_y,
+       loc_x + 2 * button_x / width, loc_y,
+       loc_x + 2 * button_x / width, 2 * button_y / height + loc_y,
+       loc_x,                        2 * button_y / height + loc_y
+     );
 }
 
 function mouseClicked(){
