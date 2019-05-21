@@ -68,7 +68,6 @@ let fs =
 "uniform float fc;" +
 "uniform vec3 color_1;" +
 "uniform vec3 color_2;" +
-"uniform vec3 patternArray;" +
 "uniform float center[2];" +
 "uniform float radius[2];" +
 "uniform sampler2D button;" +
@@ -268,3 +267,7 @@ function calc_ratio(theta, phi, psi){
 function randomInt(n){
   return Math.floor(random(n));
 }
+
+// 出来たらでいいけれど、パネル用意してクリックで任意に色変えられたり、
+// あとは個別にm, n, lをいじれたらおもしろいわね。
+// （ただしm, nは3以上、lは2以上、すべて13以下、条件1/m + 1/n + 1/l<1を満たすように適切にバリデーション）
