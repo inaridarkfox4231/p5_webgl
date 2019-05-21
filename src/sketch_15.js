@@ -27,6 +27,11 @@ let vs =
 
 // r倍したらうまくいった・・？なんかおかしい。
 // これでいいんですよ。5角形とかでも・・
+
+// 定数の仕様が独特なので、疑似的に定数を使うプログラムにしてある（forループ内で別の変数を増やすなど）。
+// breakとcontinueを駆使した若干いびつな形になってるのだけど。
+
+// 例によってlengthではなくpow(, 2.0)を使った方がいいかも。平方根を取る必要性がないので。
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -34,6 +39,7 @@ let fs =
 "uniform vec3 color_1;" +
 "uniform vec3 color_2;" +
 "uniform float alpha;" +
+"uniform float angle_n;" +
 "const int ITERATIONS = 64;" +
 "const float PI = 3.14159;" +
 "vec2 inversion(vec2 q, float r, float c){" +
@@ -54,17 +60,18 @@ let fs =
 "  float psi_plus;" +
 "  float psi_minus;" +
 "  float b1, b2;" +
-"  float c[5];" +
-"  float radius[5];" +
+"  float c[9];" +
+"  float radius[9];" +
 "  float k = 0.0;" +
-"  for(int index = 0; index < 5; index++){" +
-"    psi_plus = ((2.0 * PI * k / 5.0) + alpha) / 2.0;" +
-"    psi_minus = ((2.0 * PI * k / 5.0) - alpha) / 2.0;" +
+"  for(int index = 0; index < 9; index++){" +
+"    psi_plus = ((2.0 * PI * k / angle_n) + alpha) / 2.0;" +
+"    psi_minus = ((2.0 * PI * k / angle_n) - alpha) / 2.0;" +
 "    b1 = -1.0 / tan(psi_plus);" +
 "    b2 = -1.0 / tan(psi_minus);" +
 "    c[index] = ((b1 + b2) / 2.0) * scale;" +
 "    radius[index] = (abs(b1 - b2) / 2.0) * scale;" +
 "    k += 1.0;" +
+"    if(k == angle_n){ break; }" +
 "  }" +
 "  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);" +
 "  if(pow(p.x, 2.0) + pow(p.y, 2.0) > 0.999){ return 2.0; }" +
@@ -74,25 +81,23 @@ let fs =
 "  float diff = time * PI / 300.0;" +
 "  p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));" +
 "  for(int i = 0; i < ITERATIONS; i++){" +
-"  if(length(p - vec2(c[0], 0.0)) > radius[0]){" +
-"    p = inversion(p, radius[0], c[0]);" +
-"    count += 1.0;" +
-"  }else if(length(p - vec2(c[1], 0.0)) < radius[1]){" +
-"    p = inversion(p, radius[1], c[1]);" +
-"    count += 1.0;" +
-"  }else if(length(p - vec2(c[2], 0.0)) < radius[2]){" +
-"    p = inversion(p, radius[2], c[2]);" +
-"    count += 1.0;" +
-"  }else if(length(p - vec2(c[3], 0.0)) < radius[3]){" +
-"    p = inversion(p, radius[3], c[3]);" +
-"    count += 1.0;" +
-"  }else if(length(p - vec2(c[4], 0.0)) < radius[4]){" +
-"    p = inversion(p, radius[4], c[4]);" +
-"    count += 1.0;" +
-"  }else{" +
-"    arrived = true;" +
-"  }" +
-"  if(arrived){ break; }" +
+"    if(length(p - vec2(c[0], 0.0)) > radius[0]){" +
+"      p = inversion(p, radius[0], c[0]);" +
+"      count += 1.0;" +
+"    }else{" +
+"      k = 0.0;" +
+"      for(int j = 1; j < 9; j++){" +
+"        if(length(p - vec2(c[j], 0.0)) < radius[j]){" +
+"          p = inversion(p, radius[j], c[j]);" +
+"          count += 1.0;" +
+"          break;" +
+"        }" +
+"        k += 1.0;" +
+"        if(k == angle_n - 1.0){ break; }" +
+"      }" +
+"      if(k < angle_n - 1.0){ continue; }else{ arrived = true; }" +
+"    }" +
+"    if(arrived){ break; }" +
 "  }" +
 "  return mod(count, 2.0);" +
 "}" +
@@ -115,7 +120,8 @@ function setup(){
   // 位置計算に必要なalphaの値を放り込む
   // ここの値mは1/m + 2/n < 1を満たすように決まる（nは角の数）
   // getAlpha(n:角の数, m:内角がPI/m)という形
-  myShader.setUniform('alpha', getAlpha(5, 2));
+  myShader.setUniform('alpha', getAlpha(3, 4));
+  myShader.setUniform('angle_n', 3); // 正5角形
   //noLoop();
 }
 
@@ -149,8 +155,11 @@ function mouseClicked(){
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
   // パターンも、変わるよ
-  let new_m = randomInt(8) + Math.floor(5 / (5 - 2)) + 1;
-  myShader.setUniform('alpha', getAlpha(5, new_m));
+  let n = 3 + randomInt(4);
+  let min_m = Math.floor(n / (n - 2)) + 1;
+  let new_m = min_m + randomInt(14 - min_m);
+  myShader.setUniform('alpha', getAlpha(n, new_m));
+  myShader.setUniform('angle_n', n);
 }
 
 // alphaを出す
