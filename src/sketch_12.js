@@ -59,6 +59,9 @@ let vs =
 // varying使って渡す。その方が正統なんじゃないか。
 // あと、int使った方が礼儀正しいんじゃないかという気もする。intもちゃんと使えるようにしないと。
 
+// yの計算でr倍してる。rだけはuniform使えないので、送られてきたuniformのa, b, s, tを使う時にr倍すればOK.
+// ITERATIONSは整数にしようね。
+// p.x * p.x + p.y * p.yは計算を1回にしようね。
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -66,14 +69,13 @@ let fs =
 "uniform vec3 color_1;" +
 "uniform vec3 color_2;" +
 "uniform vec3 patternArray;" +
+"uniform float center[2];" +
+"uniform float radius[2];" +
 "uniform sampler2D button;" +
 "varying vec2 vTextureCoord;" +
 "uniform float mode;" +
-"const float ITERATIONS = 64.0;" +
+"const int ITERATIONS = 64;" +
 "const float PI = 3.14159;" +
-"float calc_ratio(float theta, float phi, float psi){" +
-"  return sqrt(pow(cos(theta), 2.0) + pow(cos(phi), 2.0) + 2.0 * cos(theta) * cos(phi) * cos(psi)) / sin(psi);" +
-"}" +
 "vec2 inversion(vec2 q, float r, float c){" +
 "  float factor = pow(r, 2.0) / (pow(q.x - c, 2.0) + pow(q.y, 2.0));" +
 "  return vec2(c, 0.0) + (vec2(q.x - c, q.y) * factor);" +
@@ -85,40 +87,36 @@ let fs =
 "vec2 poincare_to_half(vec2 p){" +
 "  return vec2(-2.0 * p.y, (1.0 - pow(p.x, 2.0) - pow(p.y, 2.0))) / (pow(p.x - 1.0, 2.0) + pow(p.y, 2.0));" +
 "}" +
+"float getNorm(vec2 p){ return pow(p.x, 2.0) + pow(p.y, 2.0); }" +
 "float reflection_3(){" +
 "  float time = 300.0 - abs(300.0 - mod(fc, 600.0));" +
 "  float r = 0.5 + (time * time / 300.0);" +
-"  float m = patternArray.x;" +
-"  float n = patternArray.y;" +
-"  float l = patternArray.z;" +
-"  float theta = PI / m;" +
-"  float phi = PI / n;" +
-"  float psi = PI / l;" +
-"  float k = calc_ratio(theta, phi, psi);" +
-"  float y = (k + sqrt(k * k - 1.0)) * r;" +
-"  float s = k * y / cos(theta);" +
-"  float t = k * y / cos(phi);" +
-"  float a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;" +
-"  float b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;" +
+"  float a = center[0] * r;" +
+"  float b = center[1] * r;" +
+"  float s = radius[0] * r;" +
+"  float t = radius[1] * r;" +
 "  float count = 0.0;" +
 "  bool arrived = false;" +
 "  vec2 p = ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);" +
+"  float norm = getNorm(p);" +
 "  if(mode < 0.5){" +
 "    p = p + vec2(0.0, 1.0);" +
 "  }else{" +
-"    if(pow(p.x, 2.0) + pow(p.y, 2.0) > 0.999){ return 2.0; }" +
+"    if(norm > 0.999){ return 2.0; }" +
 "    p = poincare_to_half(p);" +
 "  }" +
 "  float diff = time * PI / 300.0;" +
 "  p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));" +
-"  for(float i = 0.0; i < ITERATIONS; i += 1.0){" +
-"    if(pow(p.x, 2.0) + pow(p.y, 2.0) < r * r){" +
+"  float border_0 = pow(r, 2.0), border_1 = (s - a) * (s + a), border_2 = (t - b) * (t + b);" +
+"  for(int i = 0; i < ITERATIONS; i++){" +
+"    norm = getNorm(p);" +
+"    if(norm < border_0){" +
 "      p = inversion(p, r, 0.0);" +
 "      count += 1.0;" +
-"    }else if(pow(p.x - a, 2.0) + pow(p.y, 2.0) > s * s){" +
+"    }else if(norm - 2.0 * p.x * a > border_1){" +
 "      p = inversion(p, s, a);" +
 "      count += 1.0;" +
-"    }else if(pow(p.x - b, 2.0) + pow(p.y, 2.0) > t * t){" +
+"    }else if(norm - 2.0 * p.x * b > border_2){" +
 "      p = inversion(p, t, b);" +
 "      count += 1.0;" +
 "    }else{" +
@@ -156,7 +154,8 @@ function setup(){
   ci = randomInt(11);
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
-  myShader.setUniform('patternArray', [4.0, 4.0, 4.0]);
+  setParameter(); // こんなかんじで。
+  // myShader.setUniform('patternArray', [4.0, 4.0, 4.0]);
   //noLoop();
 }
 
@@ -190,6 +189,26 @@ function createButton(dx, dy, button_x, button_y, index){
        loc_x + 2 * button_x / width, 2 * button_y / height + loc_y,
        loc_x,                        2 * button_y / height + loc_y
      );
+}
+
+// m, n, lを与えてそれに応じてfs側の中心や半径のパラメータを用意する関数
+// 2になりうるのはlのみ（mが最大という設定）なので、（というのもmやnが2になるとまずいので、）
+// roofはmax(n, l)とのmaxを取っている。
+function setParameter(){
+  let l = 2 + randomInt(12); // lは2~13のどれか
+  let n = 3 + randomInt(11); // nは3~13のどれか
+  let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
+  let m = roof + randomInt(14 - roof); // roof~13のどれか
+  let theta = PI / m, phi = PI / n, psi = PI / l;
+  let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
+  let y = k + sqrt(k * k - 1.0); // r倍はfs側で行う
+  let a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;
+  let b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;
+  myShader.setUniform("center", [a, b]);
+  let s = k * y / cos(theta);
+  let t = k * y / cos(phi);
+  myShader.setUniform("radius", [s, t]);
+  console.log("(%d, %d, %d)", m, n, l);
 }
 
 // hsv形式の各パラメータが0～1の配列をrgbのそれに変換する。
@@ -228,13 +247,7 @@ function mouseClicked(){
     myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
     // パターンも、変わるよ(mが最大にする)
     // 2になるのはたかだか1つだけ。mやnが2にならないようにこの条件を付ける。
-    // mやnが2になると円弧が直線になってしまう0割りのバグが発生する。よって2になる可能性のあるものをlのみとする。
-    let l = randomInt(12) + 2; // 2～13のどれか
-    let n = randomInt(11) + 3; // 3～13のどれか
-    let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, 3); // しまった、1を足さないとだめだこれ。
-    let m = randomInt(14 - roof) + roof; // roof～13のどれか
-    myShader.setUniform('patternArray', [m, n, l]);
-    console.log([m, n, l]);
+    setParameter();
   }else if(mouseX > 544 && mouseX < 744){
     // ポーズ中はパターン変更禁止
     if(!isLoop){ return; }
@@ -243,6 +256,12 @@ function mouseClicked(){
     else{ poincare = false; img[2] = allImg[2]; }
     return;
   }
+}
+
+// fs内のcalc_ratioを移植
+function calc_ratio(theta, phi, psi){
+  let x = Math.pow(cos(theta), 2) + Math.pow(cos(phi), 2) + 2 * cos(theta) * cos(phi) * cos(psi);
+  return Math.sqrt(x) / sin(psi);
 }
 
 // 0～n-1のどれかを出す
