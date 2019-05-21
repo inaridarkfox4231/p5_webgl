@@ -2,6 +2,7 @@
 'use strict';
 
 let myShader;
+let ci = 0;
 
 let hArray = [0.65, 0.00, 0.38, 0.05, 0.55, 0.83, 0.06, 0.59, 0.20, 0.00, 0.94];
 let sArray = [0.69, 1.00, 0.80, 0.58, 1.00, 0.55, 0.91, 0.40, 0.88, 0.00, 0.73];
@@ -39,6 +40,10 @@ let fs =
 "  float factor = pow(r, 2.0) / (pow(q.x - c, 2.0) + pow(q.y, 2.0));" +
 "  return vec2(c, 0.0) + (vec2(q.x - c, q.y) * factor);" +
 "}" +
+"vec2 sltf(vec2 z, float a, float b, float c, float d){" +
+"  vec2 w = vec2((a * d + b * c) * z.x + (a * c) * (z.x * z.x + z.y * z.y) + b * d, z.y);" +
+"  return w / (pow(c * z.x + d, 2.0) + pow(c * z.y, 2.0));" +
+"}" +
 "vec2 poincare_to_half(vec2 p){" +
 "  float norm = pow(p.x, 2.0) + pow(p.y, 2.0);" +
 "  return vec2(-2.0 * p.y, (1.0 - norm)) / (1.0 - 2.0 * p.x + norm);" +
@@ -49,12 +54,12 @@ let fs =
 "  float psi_plus;" +
 "  float psi_minus;" +
 "  float b1, b2;" +
-"  float c[4];" +
-"  float radius[4];" +
+"  float c[5];" +
+"  float radius[5];" +
 "  float k = 0.0;" +
-"  for(int index = 0; index < 4; index++){" +
-"    psi_plus = ((2.0 * PI * k / 4.0) + alpha) / 2.0;" +
-"    psi_minus = ((2.0 * PI * k / 4.0) - alpha) / 2.0;" +
+"  for(int index = 0; index < 5; index++){" +
+"    psi_plus = ((2.0 * PI * k / 5.0) + alpha) / 2.0;" +
+"    psi_minus = ((2.0 * PI * k / 5.0) - alpha) / 2.0;" +
 "    b1 = -1.0 / tan(psi_plus);" +
 "    b2 = -1.0 / tan(psi_minus);" +
 "    c[index] = ((b1 + b2) / 2.0) * scale;" +
@@ -66,6 +71,8 @@ let fs =
 "  p = poincare_to_half(p);" +
 "  float count = 0.0;" +
 "  bool arrived = false;" +
+"  float diff = time * PI / 300.0;" +
+"  p = sltf(p, cos(diff), sin(diff), -sin(diff), cos(diff));" +
 "  for(int i = 0; i < ITERATIONS; i++){" +
 "  if(length(p - vec2(c[0], 0.0)) > radius[0]){" +
 "    p = inversion(p, radius[0], c[0]);" +
@@ -78,6 +85,9 @@ let fs =
 "    count += 1.0;" +
 "  }else if(length(p - vec2(c[3], 0.0)) < radius[3]){" +
 "    p = inversion(p, radius[3], c[3]);" +
+"    count += 1.0;" +
+"  }else if(length(p - vec2(c[4], 0.0)) < radius[4]){" +
+"    p = inversion(p, radius[4], c[4]);" +
 "    count += 1.0;" +
 "  }else{" +
 "    arrived = true;" +
@@ -99,14 +109,13 @@ function setup(){
   myShader = createShader(vs, fs);
   shader(myShader);
   myShader.setUniform('resolution', [width, height]);
-  let ci = 0;
+  let ci = randomInt(11);
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
-  let phi = PI / 6;
-  let c_alpha = Math.sqrt((cos(2 * PI / 4) + cos(phi)) / (1 + cos(phi)));
-  let alpha = acos(c_alpha);
-  console.log(alpha);
-  myShader.setUniform('alpha', alpha);
+  // 位置計算に必要なalphaの値を放り込む
+  // ここの値mは1/m + 2/n < 1を満たすように決まる（nは角の数）
+  // getAlpha(n:角の数, m:内角がPI/m)という形
+  myShader.setUniform('alpha', getAlpha(5, 2));
   //noLoop();
 }
 
@@ -131,6 +140,28 @@ function hsv_to_rgb(h, s, v){
   }else{
     return [v, (1.0 - s) * v, (6.0 - border) * s * v + (1.0 - s) * v];
   }
+}
+
+function mouseClicked(){
+  // クリックで色が変わるよ
+  let ci_diff = randomInt(10) + 1; // colorIndexの変化(1～10).
+  ci = (ci + ci_diff) % 11;
+  myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
+  myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
+  // パターンも、変わるよ
+  let new_m = randomInt(8) + Math.floor(5 / (5 - 2)) + 1;
+  myShader.setUniform('alpha', getAlpha(5, new_m));
+}
+
+// alphaを出す
+function getAlpha(n, m){
+  let cosine_alpha = Math.sqrt((cos(2 * PI / n) + cos(PI / m)) / (1 + cos(PI / m)));
+  return acos(cosine_alpha);
+}
+
+// 0～n-1のどれかを出す
+function randomInt(n){
+  return Math.floor(random(n));
 }
 
 function keyTyped(){
