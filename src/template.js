@@ -13,14 +13,19 @@ let vs =
 let fs =
 "precision mediump float;" +
 "void main(){" +
-"  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
+"  float c[3];" +
+"  float v = 0.0;" +
+"  for(int i = 0; i < 3; i++){" +
+"    v += 0.2;" +
+"    c[i] = v;" +
+"  }" +
+"  gl_FragColor = vec4(c[0], c[1], c[2], 1.0);" +
 "}";
 
 function setup(){
   createCanvas(400, 400, WEBGL);
   colorMode(HSB, 100);
   noStroke();
-  angleMode(DEGREES);
   myShader = createShader(vs, fs);
   shader(myShader);
 }

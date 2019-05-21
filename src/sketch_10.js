@@ -106,11 +106,7 @@ let fs =
  }\
  void main(){\
    float ref = reflection_3();\
-   if(ref < 0.5){\
-     gl_FragColor = vec4(color_1, 1.0);\
-   }else{\
-     gl_FragColor = vec4(color_2, 1.0);\
-   }\
+   gl_FragColor = vec4(color_1 * (1.0 - ref) + color_2 * ref, 1.0);\
  }\
 ";
 
@@ -131,7 +127,7 @@ function setup(){
   let ci = colorIndex;
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
-  myShader.setUniform('patternArray', [13.0, 10.0, 4.0]);
+  myShader.setUniform('patternArray', [4, 4, 4]);
   //noLoop();
 }
 
