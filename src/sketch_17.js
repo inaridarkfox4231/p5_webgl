@@ -75,11 +75,11 @@ let fs =
 "float getNorm(vec2 p){ return pow(p.x, 2.0) + pow(p.y, 2.0); }" +
 "vec3 reflection_3(){" +
 "  float time = 300.0 - abs(300.0 - mod(fc, 600.0));" +
-"  float r = 0.5;" +
-"  float a = center[0];" +
-"  float b = center[1];" +
-"  float s = radius[0];" +
-"  float t = radius[1];" +
+"  float r = 0.5 + (time * time / 300.0);" +
+"  float a = center[0] * r;" +
+"  float b = center[1] * r;" +
+"  float s = radius[0] * r;" +
+"  float t = radius[1] * r;" +
 "  float count = 0.0;" +
 "  bool arrived = false;" +
 "  vec2 p = ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);" +
@@ -109,9 +109,10 @@ let fs =
 "    }" +
 "    if(arrived){ break; }" +
 "  }" +
-"  float e_0 = 1.0 - (calc_dist(p.x, p.y, b, t) / dists[0]);" +
-"  float e_1 = 1.0 - (calc_dist(p.x, p.y, a, s) / dists[1]);" +
-"  float e_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, r) / dists[2]);" +
+"  p = p / r;" +
+"  float e_0 = 1.0 - (calc_dist(p.x, p.y, center[1], radius[1]) / dists[0]);" +
+"  float e_1 = 1.0 - (calc_dist(p.x, p.y, center[0], radius[0]) / dists[1]);" +
+"  float e_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, 1.0) / dists[2]);" +
 "  return vec3(step(0.99, e_0), step(0.99, e_1), step(0.99, e_2));" +
 "}" +
 "void main(){" +
@@ -188,7 +189,7 @@ function setParameter(){
   let m = roof + randomInt(14 - roof); // roof~13のどれか
   let theta = PI / m, phi = PI / n, psi = PI / l;
   let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
-  let r = 0.5; // rは固定する。
+  let r = 1.0; // rは固定する。
   let y = (k + sqrt(k * k - 1.0)) * r; // r倍する。
   let a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;
   let b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;
