@@ -51,11 +51,7 @@ let fs =
 "const float PI = 3.14159;" +
 "varying vec3 vPosition;" +
 "vec2 sphere_to_poincare(vec3 v){" +
-"  v.z = max(v.z, -0.999);" +
-"  float norm = length(v);" +
-"  float k = norm / (1.0 + v.z);" +
-"  if(norm < 0.001){ if(v.z > 0.0){ return vec2(0.0); } }" +
-"  return ((1.0 - 2.0 / (exp(k) + 1.0)) / norm) * v.xy;" +
+"  return v.xy;" +
 "}" +
 "vec2 poincare_to_half(vec2 p){" +
 "  return vec2(-2.0 * p.y, (1.0 - pow(p.x, 2.0) - pow(p.y, 2.0))) / (pow(p.x - 1.0, 2.0) + pow(p.y, 2.0));" +
