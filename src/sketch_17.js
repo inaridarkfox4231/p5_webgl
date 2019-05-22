@@ -37,20 +37,11 @@ let vs =
 "  gl_Position = vec4(aPosition, 1.0);" +
 "  vTextureCoord = vec2((aPosition.x - loc.x) * (384.0 / 200.0), 1.0 - (aPosition.y - loc.y) * (240.0 / 80.0));" +
 "}";
-/*
-"float calc_dist(float x, float y, float c, float r){" +
-"  vec3 temp = vec3(pow(x - c, 2.0), pow(y, 2.0), pow(r, 2.0));" +
-"  float g = sqrt(pow(temp[0] - temp[1] - temp[2], 2.0) + 4.0 * temp[0] * temp[1]) - abs(temp[0] + temp[1] - temp[2]);" +
-"  return log(2.0 * r * y / g);" +
-"}" +
-
-"  float ratio_0 = 1.0 - (calc_dist(p.x, p.y, b, t) / dists[0]);" +
-"  float ratio_1 = 1.0 - (calc_dist(p.x, p.y, a, s) / dists[1]);" +
-"  float ratio_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, r) / dists[2]);" +
-"  return vec3(ratio_0, ratio_1, ratio_2);" +
-*/
 
 // フラグメントシェーダ
+
+// とりあえず成功？colorはもう使わない・・かどうかは知らない、んー。
+// 区切りの線を黒にして間の色でcolor使いたいんだけど。できるかな。
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -118,10 +109,10 @@ let fs =
 "    }" +
 "    if(arrived){ break; }" +
 "  }" +
-"  float ratio_0 = 1.0 - (calc_dist(p.x, p.y, b, t) / dists[0]);" +
-"  float ratio_1 = 1.0 - (calc_dist(p.x, p.y, a, s) / dists[1]);" +
-"  float ratio_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, r) / dists[2]);" +
-"  return vec3(step(0.99, ratio_0), step(0.99, ratio_1), step(0.99, ratio_2));" +
+"  float e_0 = 1.0 - (calc_dist(p.x, p.y, b, t) / dists[0]);" +
+"  float e_1 = 1.0 - (calc_dist(p.x, p.y, a, s) / dists[1]);" +
+"  float e_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, r) / dists[2]);" +
+"  return vec3(step(0.99, e_0), step(0.99, e_1), step(0.99, e_2));" +
 "}" +
 "void main(){" +
 "  if(mode < 1.0){" +
