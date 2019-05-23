@@ -1,5 +1,4 @@
-// かねてからやりたかった、回転による敷き詰めを行う。
-// 辺の中点を求め、それに対する回転。円を使って区切る。
+// きつねー
 
 'use strict';
 let myShader;
@@ -16,9 +15,9 @@ let vDiffArray = [0.07, 0.00, 0.22, 0.18, 0.10, 0.21, 0.00, 0.16, 0.14, 0.30, 0.
 
 let allImg = new Array(5);
 let img = new Array(3);
+let foxImg;
 
 // バーテックスシェーダ
-// 普通に情報を渡すだけでいい
 let vs =
 "precision mediump float;" +
 "attribute vec3 aPosition;" +
@@ -30,37 +29,8 @@ let vs =
 "}";
 
 // フラグメントシェーダ
-// 今回はこっちだけいじる。
-// pはx:-1.0～1.0,y:0.0～2.0の範囲で。
 
-// sltfはSL2(R)による一次分数変換で、行列[a, b;c, d]によるもの。
-// あとは3つの角度とか色とかクリックで変更できるようにしたいわね
-
-// uniform変数
-// float fc: フレームカウンタ
-// vec3 color_1: 基本領域に偶数回で移るエリアの色。基本的に濃い。
-// vec3 color_2: 基本領域に奇数回で移るエリアの色。基本的に薄い。
-// vec3 patternArray: 整数の3つ組[m, n, l]で、lが一番小さい。また、1/m + 1/n + 1/l < PIを満たす。
-// sampler2D button: ボタンのイメージ。
-// float mode: タイリングを描くか、描くとしたらどっちのモードか、あるいはボタンを描くか、の制御。
-
-// mat2 ref0は使ってないので削除
-// 必要なのはm, n, lではなくa, b, s, tなので、a, b, s, tをユニフォームにしてm, n, lは外に出す。
-// m, n, lを決めるのはjs側で行う。
-// さらにいうと、ポアンカレとの切り替えはバーテックスシェーダ側にもモードを用意することで対処できそう。
-// varying使って渡す。その方が正統なんじゃないか。
-// あと、int使った方が礼儀正しいんじゃないかという気もする。intもちゃんと使えるようにしないと。
-
-// yの計算でr倍してる。rだけはuniform使えないので、送られてきたuniformのa, b, s, tを使う時にr倍すればOK.
-// ITERATIONSは整数にしようね。
-// p.x * p.x + p.y * p.yは計算を1回にしようね。
-
-// 送るときにr倍、r*r倍するといいかも。
-
-// できました。完璧ですね。
-// 0のとき・・すべてinversionする
-// 1のとき・・一つ目だけ回転、他はinversionする
-// 2のとき・・すべてinversionする
+// 狐アイコンのやつをuniformで送っておいて、それに対してtextureであれこれみたいな感じ。
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -69,9 +39,9 @@ let fs =
 "uniform vec3 color_2;" +
 "uniform float center[2];" +
 "uniform float radius[2];" +
-"uniform float R_part[3];" +
-"uniform float N_part[3];" +
+"uniform float dists[3];" +
 "uniform sampler2D button;" +
+"uniform sampler2D foxImg;" +
 "varying vec2 vTextureCoord;" +
 "uniform float mode;" +
 "const int ITERATIONS = 64;" +
@@ -87,20 +57,19 @@ let fs =
 "vec2 poincare_to_half(vec2 p){" +
 "  return vec2(-2.0 * p.y, (1.0 - pow(p.x, 2.0) - pow(p.y, 2.0))) / (pow(p.x - 1.0, 2.0) + pow(p.y, 2.0));" +
 "}" +
-"vec2 upside_down(vec2 p, float x, float n){" +
-"  vec2 w = vec2(x * (n + pow(p.x, 2.0) + pow(p.y, 2.0)) - (n + x * x) * p.x, (n - x * x) * p.y);" +
-"  return w / (pow(p.x - x, 2.0) + pow(p.y, 2.0));" +
+"float calc_dist(float x, float y, float c, float r){" +
+"  vec3 temp = vec3(pow(x - c, 2.0), pow(y, 2.0), pow(r, 2.0));" +
+"  float g = sqrt(pow(temp[0] - temp[1] - temp[2], 2.0) + 4.0 * temp[0] * temp[1]) - abs(temp[0] + temp[1] - temp[2]);" +
+"  return log(2.0 * r * y / g);" +
 "}" +
 "float getNorm(vec2 p){ return pow(p.x, 2.0) + pow(p.y, 2.0); }" +
-"float reflection_3(){" +
+"vec3 reflection_3(){" +
 "  float time = 300.0 - abs(300.0 - mod(fc, 600.0));" +
 "  float r = 0.5 + (time * time / 300.0);" +
 "  float a = center[0] * r;" +
 "  float b = center[1] * r;" +
 "  float s = radius[0] * r;" +
 "  float t = radius[1] * r;" +
-"  float r1 = R_part[0] * r, r2 = R_part[1] * r, r3 = R_part[2] * r;" +
-"  float n1 = N_part[0] * r * r, n2 = N_part[1] * r * r, n3 = N_part[2] * r * r;" +
 "  float count = 0.0;" +
 "  bool arrived = false;" +
 "  vec2 p = ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);" +
@@ -108,7 +77,7 @@ let fs =
 "  if(mode < 0.5){" +
 "    p = p + vec2(0.0, 1.0);" +
 "  }else{" +
-"    if(norm > 0.999){ return 2.0; }" +
+"    if(norm > 0.999){ return vec3(-1.0, -1.0, 0.0); }" +
 "    p = poincare_to_half(p);" +
 "  }" +
 "  float diff = time * PI / 300.0;" +
@@ -117,25 +86,38 @@ let fs =
 "  for(int i = 0; i < ITERATIONS; i++){" +
 "    norm = getNorm(p);" +
 "    if(norm < border_0){" +
-"      p = upside_down(p, r1, n1);" +
+"      p = inversion(p, r, 0.0);" +
 "      count += 1.0;" +
 "    }else if(norm - 2.0 * p.x * a > border_1){" +
-"      p = upside_down(p, r3, n3);" +
+"      p = inversion(p, s, a);" +
 "      count += 1.0;" +
 "    }else if(norm - 2.0 * p.x * b > border_2){" +
-"      p = upside_down(p, r2, n2);" +
+"      p = inversion(p, t, b);" +
 "      count += 1.0;" +
 "    }else{" +
 "      arrived = true;" +
 "    }" +
 "    if(arrived){ break; }" +
 "  }" +
-"  return mod(count, 2.0);" +
+"  p = p / r;" +
+"  float e_0 = calc_dist(p.x, p.y, center[1], radius[1]) / dists[0];" +
+"  float e_1 = calc_dist(p.x, p.y, center[0], radius[0]) / dists[1];" +
+"  float e_2 = calc_dist(p.x, p.y, 0.0, 1.0) / dists[2];" +
+"  return vec3((2.0 * e_0 + e_2 * (e_1 - e_0)) / (2.0 * (e_0 + e_1)), 1.0 - e_2, mod(count, 2.0));" +
 "}" +
 "void main(){" +
 "  if(mode < 1.0){" +
-"    float ref = reflection_3();" +
-"    gl_FragColor = vec4((1.0 - step(2.0, ref)) * ((1.0 - ref) * color_1 + ref * color_2), 1.0);" +
+"    vec3 vPos = reflection_3();" +
+"    if(vPos.x < 0.0){" +
+"      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);" +
+"    }else{" +
+"      vec4 color = texture2D(foxImg, vPos.xy);" +
+"      if(color.w < 1.0){" +
+"        gl_FragColor = vec4(((1.0 - vPos.z) * color_1 + vPos.z * color_2), 1.0);" +
+"      }else{" +
+"        gl_FragColor = color;" +
+"      }" +
+"    }" +
 "  }else{" +
 "    gl_FragColor = texture2D(button, vTextureCoord);" +
 "  }" +
@@ -148,6 +130,7 @@ function preload(){
     allImg[i] = loadImage("./assets/text" + i + ".png");
   }
   for(let i = 0; i < 3; i++){ img[i] = allImg[i]; }
+  foxImg = loadImage("./assets/kitune.PNG");
 }
 
 function setup(){
@@ -161,7 +144,7 @@ function setup(){
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
   setParameter(); // こんなかんじで。
-  // myShader.setUniform('patternArray', [4.0, 4.0, 4.0]);
+  myShader.setUniform('foxImg', foxImg); // 狐アイコン画像の登録
   //noLoop();
 }
 
@@ -197,30 +180,21 @@ function createButton(dx, dy, button_x, button_y, index){
      );
 }
 
-// m, nを与えるだけ。
-// 1/m + 1/n < 1で、θ+Φ=PI/m, ψ=1/n. θとΦは正なので、必然的にPI/2にはならない。
-// 連続的に変化させたら面白そう。θ-Φの直線で回転させる。
-// 二つの頂点の座標を計算して中点を求め、あっちの方で回転のメソッドというか関数を用意して、
-// inversionの代わりに適用する。なお、円の情報は表と裏を判定するのに必要。
-// 色分けに関しては同じ色になってしまうのを避けたいので・・どうするかな、グラデーションでやるか・・んー。それも難しそう。
-// 「回数が違うならば隣接しない」の条件さえ満たしていればグラデーションで行ける
-// 自由と言われてもピンとこないので下限をとりあえず0.1くらいに設定して0.1以上PI/m - 0.1以下で動かすことにする。
-// (PI/3がおよそ1でPI/13がおよそ0.23くらいなので充分妥当な範囲)
-
-/*
-let n = 2 + randomInt(12); // 2～13.
-let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
-let m = roof + randomInt(14 - roof); // roof~13のどれか
-let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
-let phi = PI / m - theta;
-let psi = PI / n;
-*/
-
+// m, n, lを与えてそれに応じてfs側の中心や半径のパラメータを用意する関数
+// 2になりうるのはlのみ（mが最大という設定）なので、（というのもmやnが2になるとまずいので、）
+// roofはmax(n, l)とのmaxを取っている。
 function setParameter(){
-  let angles = getAngle(2);
-  let theta = angles[0], phi = angles[1], psi = angles[2];
+  let l = 2 + randomInt(5); // lは2~6のどれか
+  let n = 3 + randomInt(4); // nは3~6のどれか
+  let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
+  let m = roof + randomInt(7 - roof); // roof~6のどれか
+  // ・・・
+  //l = 4, n = 4, m = 4;
+  // ・・・・・・
+  let theta = PI / m, phi = PI / n, psi = PI / l;
   let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
-  let y = k + sqrt(k * k - 1.0); // r倍はfs側で行う
+  let r = 1.0; // rは固定する。
+  let y = (k + sqrt(k * k - 1.0)) * r; // r倍する。
   let a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;
   let b = (cos(theta) + cos(phi) * cos(psi)) / (cos(phi) * sin(psi)) * y;
   myShader.setUniform("center", [a, b]);
@@ -228,44 +202,13 @@ function setParameter(){
   let t = k * y / cos(phi);
   myShader.setUniform("radius", [s, t]);
   // 3つの頂点座標を計算
-  // A(ax, ay)がθ, B(bx, by)がΦ, C(cx, cy)がψの角に対応する頂点の座標になる。
-  let verts = calc_vert(a, s, b, t, 1.0, y); // 6つの成分を取得。(ax, ay, bx, by, cx, cy)
-  // 使うのは(ax, ay)と(bx, by)だけど(cx, cy)も計算して中点の座標はすべて送る、
-  // いや、使うのは実部とノルムの2乗（x, x^2+y^2）だけだから3つの成分からなる配列2つでいいやね。
-  let middle_array = get_middle_array(verts);
-  myShader.setUniform("R_part", [middle_array[0], middle_array[2], middle_array[4]]);
-  myShader.setUniform("N_part", [middle_array[1], middle_array[3], middle_array[5]]);
-  console.log("angle:(%f, %f, %f)", theta, phi, psi);
-  console.log("realpart:(%f, %f, %f)", middle_array[0], middle_array[2], middle_array[4]);
-  console.log("norm^2(%f, %f, %f)", middle_array[1], middle_array[3], middle_array[5]);
-}
-
-// 角度の組(θ, Φ, ψ)を与える。
-function getAngle(kind){
-  if(kind === 0){
-    // 0は(PI / m, PI / n, PI / l)で1/m + 1/n + 1/l < 1でかつmが最大になっているもの。
-    let l = 2 + randomInt(12); // lは2~13のどれか
-    let n = 3 + randomInt(11); // nは3~13のどれか
-    let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
-    let m = roof + randomInt(14 - roof); // roof~13のどれか
-    console.log("integer:(%d, %d, %d)", m, n, l);
-    return [PI / m, PI / n, PI / l];
-  }else if(kind === 1){
-    // 1は(θ, Φ, PI / n)でθ + Φ = PI/mで1/m + 1/n < 1でかつmが最大になっているもの。ただしθ,Φの下限は0.1とする。
-    let n = 2 + randomInt(12); // 2～13.
-    let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
-    let m = roof + randomInt(14 - roof); // roof~13のどれか
-    let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
-    console.log("integer:(%d, %d)", m, n);
-    return [theta, PI / m - theta, PI / n];
-  }else if(kind === 2){
-    // 2は(θ, Φ, ψ)でθ + Φ + ψ = PI / mでmは2以上の整数、かつこれらの角度の下限は0.05とかそんな感じ。
-    let m = 2 + randomInt(9); // mは2～10のどれか
-    let theta = 0.05 + random(PI / m - 0.2);
-    let phi = 0.05 + random(PI / m - theta - 0.1);
-    console.log("integer:(%d)", m);
-    return [theta, phi, PI / m - theta - phi];
-  }
+  let verts = calc_vert(a, s, b, t, r, y); // 6つの成分を取得。(ax, ay, bx, by, cx, cy)
+  // 対辺との距離を計算
+  let dists = [calc_dist(verts[0], verts[1], b, t), calc_dist(verts[2], verts[3], a, s), calc_dist(verts[4], verts[5], 0, r)];
+  // vec3形式で送る
+  myShader.setUniform("dists", dists);
+  console.log("(%d, %d, %d)", m, n, l);
+  console.log("(%f, %f, %f)", dists[0], dists[1], dists[2]);
 }
 
 // hsv形式の各パラメータが0～1の配列をrgbのそれに変換する。
@@ -298,18 +241,13 @@ function calc_vert(a, s, b, t, r, y){
   return [x1, y1, x2, y2, x3, y3];
 }
 
-function get_middle_array(verts){
-  // 順にAB, BC, CAの中点の実部と、あとノルムの2乗を与える。
-  let array = [];
-  for(let i = 0; i < 5; i += 2){
-    let x1 = verts[i];
-    let y1 = verts[i + 1];
-    let x2 = verts[(i + 2) % 6];
-    let y2 = verts[(i + 3) % 6];
-    array.push((x1 * y2 + x2 * y1) / (y1 + y2));
-    array.push(((Math.pow(x1, 2) + Math.pow(y1, 2)) * y2 + (Math.pow(x2, 2) + Math.pow(y2, 2)) * y1) / (y1 + y2));
-  }
-  return array;
+// (x, y)と円（というか直線）(c, r)の双曲距離を計算します
+function calc_dist(x, y, c, r){
+  let temp1 = (x - c) * (x - c);
+  let temp2 = y * y;
+  let temp3 = r * r;
+  let g = Math.sqrt(Math.pow(temp1 - temp2 - temp3, 2) + 4 * temp1 * temp2) - abs(temp1 + temp2 - temp3);
+  return Math.log(2 * r * y / g);
 }
 
 function mouseClicked(){
