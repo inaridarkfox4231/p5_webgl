@@ -41,7 +41,13 @@ let vs =
 // フラグメントシェーダ
 
 // とりあえず成功？colorはもう使わない・・かどうかは知らない、んー。
-// 区切りの線を黒にして間の色でcolor使いたいんだけど。できるかな。
+// 区切りの線を黒にして間の色でcolor使いたいんだけど。できるかな。→やってみたらどぎついのができた・・こわい
+// イメージ通りにいかないのは辺の接続部分に問題がある。太さが均等になるような仕組みが必要らしい。
+
+// rも可変になったしとりあえず、こんなもんで。正七角形による敷き詰めもバリエーションでできたし。
+// まあ、若干力技になってるからもうちょっと研究しなきゃだけどね・・とりあえず、これで。
+
+// 線の太さとか、各辺の消す消さないとか自由にいじれると面白そう。もちろん2, 3, 7の各数字も含めて。全部。
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -111,9 +117,10 @@ let fs =
 "  }" +
 "  p = p / r;" +
 "  float e_0 = 1.0 - (calc_dist(p.x, p.y, center[1], radius[1]) / dists[0]);" +
-"  float e_1 = 1.0 - (calc_dist(p.x, p.y, center[0], radius[0]) / dists[1]);" +
-"  float e_2 = 1.0 - (calc_dist(p.x, p.y, 0.0, 1.0) / dists[2]);" +
-"  return vec3(step(0.99, e_0), step(0.99, e_1), step(0.99, e_2));" +
+"  float e_1 = (calc_dist(p.x, p.y, center[0], radius[0]) / dists[1]);" +
+"  float e_2 = (calc_dist(p.x, p.y, 0.0, 1.0) / dists[2]);" +
+"  float valid = 0.97;" +
+"  return vec3(step(valid, e_0), step(valid, e_1), step(valid, e_2));" +
 "}" +
 "void main(){" +
 "  if(mode < 1.0){" +
@@ -187,6 +194,10 @@ function setParameter(){
   let n = 3 + randomInt(11); // nは3~13のどれか
   let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
   let m = roof + randomInt(14 - roof); // roof~13のどれか
+  // ここで
+  l = 2, n = 3, m = 7;
+  // 具体的な目標の為に固定してあります（後で戻します）
+  // ていうか具体的に数をいじれるようにしたいわね
   let theta = PI / m, phi = PI / n, psi = PI / l;
   let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
   let r = 1.0; // rは固定する。
