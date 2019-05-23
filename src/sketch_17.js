@@ -194,10 +194,6 @@ function setParameter(){
   let n = 3 + randomInt(11); // nは3~13のどれか
   let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
   let m = roof + randomInt(14 - roof); // roof~13のどれか
-  // ここで
-  l = 2, n = 3, m = 7;
-  // 具体的な目標の為に固定してあります（後で戻します）
-  // ていうか具体的に数をいじれるようにしたいわね
   let theta = PI / m, phi = PI / n, psi = PI / l;
   let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
   let r = 1.0; // rは固定する。

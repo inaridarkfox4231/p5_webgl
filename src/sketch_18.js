@@ -54,6 +54,11 @@ let vs =
 // yの計算でr倍してる。rだけはuniform使えないので、送られてきたuniformのa, b, s, tを使う時にr倍すればOK.
 // ITERATIONSは整数にしようね。
 // p.x * p.x + p.y * p.yは計算を1回にしようね。
+
+// 送るときにr倍、r*r倍するといいかも。
+
+// できました。完璧ですね。
+// あとパターンとしては、
 let fs =
 "precision mediump float;" +
 "uniform vec2 resolution;" +
@@ -80,6 +85,10 @@ let fs =
 "vec2 poincare_to_half(vec2 p){" +
 "  return vec2(-2.0 * p.y, (1.0 - pow(p.x, 2.0) - pow(p.y, 2.0))) / (pow(p.x - 1.0, 2.0) + pow(p.y, 2.0));" +
 "}" +
+"vec2 upside_down(vec2 p, float x, float n){" +
+"  vec2 w = vec2(x * (n + pow(p.x, 2.0) + pow(p.y, 2.0)) - (n + x * x) * p.x, (n - x * x) * p.y);" +
+"  return w / (pow(p.x - x, 2.0) + pow(p.y, 2.0));" +
+"}" +
 "float getNorm(vec2 p){ return pow(p.x, 2.0) + pow(p.y, 2.0); }" +
 "float reflection_3(){" +
 "  float time = 300.0 - abs(300.0 - mod(fc, 600.0));" +
@@ -88,6 +97,8 @@ let fs =
 "  float b = center[1] * r;" +
 "  float s = radius[0] * r;" +
 "  float t = radius[1] * r;" +
+"  float r1 = R_part[0] * r, r2 = R_part[1] * r, r3 = R_part[2] * r;" +
+"  float n1 = N_part[0] * r * r, n2 = N_part[1] * r * r, n3 = N_part[2] * r * r;" +
 "  float count = 0.0;" +
 "  bool arrived = false;" +
 "  vec2 p = ((gl_FragCoord.xy + vec2(0.0, -96.0)) * 2.0 - resolution) / min(resolution.x, resolution.y);" +
@@ -104,7 +115,7 @@ let fs =
 "  for(int i = 0; i < ITERATIONS; i++){" +
 "    norm = getNorm(p);" +
 "    if(norm < border_0){" +
-"      p = inversion(p, r, 0.0);" +
+"      p = upside_down(p, r1, n1);" +
 "      count += 1.0;" +
 "    }else if(norm - 2.0 * p.x * a > border_1){" +
 "      p = inversion(p, s, a);" +
@@ -217,9 +228,31 @@ function setParameter(){
   let middle_array = get_middle_array(verts);
   myShader.setUniform("R_part", [middle_array[0], middle_array[2], middle_array[4]]);
   myShader.setUniform("N_part", [middle_array[1], middle_array[3], middle_array[5]]);
+  console.log("integer:(%d, %d)", m, n);
   console.log("angle:(%f, %f, %f)", theta, phi, psi);
   console.log("realpart:(%f, %f, %f)", middle_array[0], middle_array[2], middle_array[4]);
   console.log("norm^2(%f, %f, %f)", middle_array[1], middle_array[3], middle_array[5]);
+}
+
+// 角度の組(θ, Φ, ψ)を与える。
+function getAngle(kind){
+  if(kind === 0){
+    // 0は(PI / m, PI / n, PI / l)で1/m + 1/n + 1/l < 1でかつmが最大になっているもの。
+    let l = 2 + randomInt(12); // lは2~13のどれか
+    let n = 3 + randomInt(11); // nは3~13のどれか
+    let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
+    let m = roof + randomInt(14 - roof); // roof~13のどれか
+    return [PI / m, PI / n, PI / l];
+  }else if(kind === 1){
+    // 1は(θ, Φ, PI / n)でθ + Φ = PI/mで1/m + 1/n < 1でかつmが最大になっているもの。ただしθ,Φの下限は0.1とする。
+    let n = 2 + randomInt(12); // 2～13.
+    let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
+    let m = roof + randomInt(14 - roof); // roof~13のどれか
+    let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
+    return [theta, PI / m - theta, PI / n];
+  }else if(kind === 2){
+    // 2は(θ, Φ, ψ)でθ + Φ + ψ = PI / mでmは2以上の整数、かつこれらの角度の下限は0.1とかそんな感じ。
+  }
 }
 
 // hsv形式の各パラメータが0～1の配列をrgbのそれに変換する。
