@@ -118,10 +118,10 @@ let fs =
 "      p = upside_down(p, r1, n1);" +
 "      count += 1.0;" +
 "    }else if(norm - 2.0 * p.x * a > border_1){" +
-"      p = inversion(p, s, a);" +
+"      p = upside_down(p, r3, n3);" +
 "      count += 1.0;" +
 "    }else if(norm - 2.0 * p.x * b > border_2){" +
-"      p = inversion(p, t, b);" +
+"      p = upside_down(p, r2, n2);" +
 "      count += 1.0;" +
 "    }else{" +
 "      arrived = true;" +
@@ -205,13 +205,18 @@ function createButton(dx, dy, button_x, button_y, index){
 // 自由と言われてもピンとこないので下限をとりあえず0.1くらいに設定して0.1以上PI/m - 0.1以下で動かすことにする。
 // (PI/3がおよそ1でPI/13がおよそ0.23くらいなので充分妥当な範囲)
 
+/*
+let n = 2 + randomInt(12); // 2～13.
+let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
+let m = roof + randomInt(14 - roof); // roof~13のどれか
+let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
+let phi = PI / m - theta;
+let psi = PI / n;
+*/
+
 function setParameter(){
-  let n = 2 + randomInt(12); // 2～13.
-  let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
-  let m = roof + randomInt(14 - roof); // roof~13のどれか
-  let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
-  let phi = PI / m - theta;
-  let psi = PI / n;
+  let angles = getAngle(2);
+  let theta = angles[0], phi = angles[1], psi = angles[2];
   let k = calc_ratio(theta, phi, psi); // あっちのcalc_ratioを移植したもの
   let y = k + sqrt(k * k - 1.0); // r倍はfs側で行う
   let a = -(cos(phi) + cos(theta) * cos(psi)) / (cos(theta) * sin(psi)) * y;
@@ -228,7 +233,6 @@ function setParameter(){
   let middle_array = get_middle_array(verts);
   myShader.setUniform("R_part", [middle_array[0], middle_array[2], middle_array[4]]);
   myShader.setUniform("N_part", [middle_array[1], middle_array[3], middle_array[5]]);
-  console.log("integer:(%d, %d)", m, n);
   console.log("angle:(%f, %f, %f)", theta, phi, psi);
   console.log("realpart:(%f, %f, %f)", middle_array[0], middle_array[2], middle_array[4]);
   console.log("norm^2(%f, %f, %f)", middle_array[1], middle_array[3], middle_array[5]);
@@ -242,6 +246,7 @@ function getAngle(kind){
     let n = 3 + randomInt(11); // nは3~13のどれか
     let roof = max(Math.floor((l * n) / (l * n - l - n)) + 1, max(n, l)); // roofはmのとりうる値の最小値
     let m = roof + randomInt(14 - roof); // roof~13のどれか
+    console.log("integer:(%d, %d, %d)", m, n, l);
     return [PI / m, PI / n, PI / l];
   }else if(kind === 1){
     // 1は(θ, Φ, PI / n)でθ + Φ = PI/mで1/m + 1/n < 1でかつmが最大になっているもの。ただしθ,Φの下限は0.1とする。
@@ -249,9 +254,15 @@ function getAngle(kind){
     let roof = Math.floor(n / (n - 1)) + 1; // roofはmのとりうる値の最小値。
     let m = roof + randomInt(14 - roof); // roof~13のどれか
     let theta = 0.1 + random(PI / m - 0.2); // 0.1～PI - 0.1くらい
+    console.log("integer:(%d, %d)", m, n);
     return [theta, PI / m - theta, PI / n];
   }else if(kind === 2){
-    // 2は(θ, Φ, ψ)でθ + Φ + ψ = PI / mでmは2以上の整数、かつこれらの角度の下限は0.1とかそんな感じ。
+    // 2は(θ, Φ, ψ)でθ + Φ + ψ = PI / mでmは2以上の整数、かつこれらの角度の下限は0.05とかそんな感じ。
+    let m = 2 + randomInt(9); // mは2～10のどれか
+    let theta = 0.05 + random(PI / m - 0.2);
+    let phi = 0.05 + random(PI / m - theta - 0.1);
+    console.log("integer:(%d)", m);
+    return [theta, phi, PI / m - theta - phi];
   }
 }
 
