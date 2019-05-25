@@ -1,3 +1,5 @@
+// かってな正方形イメージからタイリングを構成できるように改良する
+
 // きつねー
 
 'use strict';
@@ -16,7 +18,6 @@ let vDiffArray = [0.07, 0.00, 0.22, 0.18, 0.10, 0.21, 0.00, 0.16, 0.14, 0.30, 0.
 let allImg = new Array(5);
 let img = new Array(3);
 let foxImg;
-let pokeImgs = new Array(3);
 
 // バーテックスシェーダ
 let vs =
@@ -35,10 +36,6 @@ let vs =
 /*
 狐画像の場合：
 "      vec4 color = texture2D(foxImg, vPos.xy);" +
-ポケモン画像：
-"      float i1 = mod(vPos.z, 3.0);" +
-"      vec3 iVec = vec3((i1 - 1.0) * (i1 - 2.0) * 0.5, i1 * (2.0 - i1), i1 * (i1 - 1.0) * 0.5);" +
-"      vec4 color = texture2D(pokeImg_0, vPos.xy) * iVec.x + texture2D(pokeImg_1, vPos.xy) * iVec.y + texture2D(pokeImg_2, vPos.xy) * iVec.z;" +
 */
 // ポケモン画像（3種類それぞれ）の場合：
 // countを送って向こうで割り算するように変更
@@ -56,9 +53,6 @@ let fs =
 "uniform float dists[3];" +
 "uniform sampler2D button;" +
 "uniform sampler2D foxImg;" +
-"uniform sampler2D pokeImg_0;" +
-"uniform sampler2D pokeImg_1;" +
-"uniform sampler2D pokeImg_2;" +
 "varying vec2 vTextureCoord;" +
 "uniform float mode;" +
 "const int ITERATIONS = 64;" +
@@ -120,7 +114,8 @@ let fs =
 "  float e_0 = calc_dist(p.x, p.y, center[1], radius[1]) / dists[0];" +
 "  float e_1 = calc_dist(p.x, p.y, center[0], radius[0]) / dists[1];" +
 "  float e_2 = calc_dist(p.x, p.y, 0.0, 1.0) / dists[2];" +
-"  return vec3((2.0 * e_0 + e_2 * (e_1 - e_0)) / (2.0 * (e_0 + e_1)), 1.0 - e_2, count);" +
+"  if(step(0.536, e_2) + step(0.464, abs(e_0 - e_1)) > 0.0){ return vec3(0.0, -1.0, count); }" +
+"  return vec3(1.0773 * (e_0 - e_1) + 0.5, 1.0 - (e_2 / 0.536), count);" +
 "}" +
 "void main(){" +
 "  if(mode < 1.0){" +
@@ -129,7 +124,7 @@ let fs =
 "      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);" +
 "    }else{" +
 "      vec4 color = texture2D(foxImg, vPos.xy);" +
-"      if(color.w < 1.0){" +
+"      if(step(0.1, color.w) * step(-0.1, vPos.y) == 0.0){" +
 "        float i2 = mod(vPos.z, 2.0);" +
 "        gl_FragColor = vec4(((1.0 - i2) * color_1 + i2 * color_2), 1.0);" +
 "      }else{" +
@@ -148,10 +143,7 @@ function preload(){
     allImg[i] = loadImage("./assets/text" + i + ".png");
   }
   for(let i = 0; i < 3; i++){ img[i] = allImg[i]; }
-  foxImg = loadImage("./assets/kitune.PNG");
-  for(let i = 0; i < 3; i++){
-    pokeImgs[i] = loadImage("./assets/poke_" + i + ".PNG");
-  }
+  foxImg = loadImage("./assets/foxImage.PNG");
 }
 
 function setup(){
@@ -166,10 +158,6 @@ function setup(){
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
   setParameter(); // こんなかんじで。
   myShader.setUniform('foxImg', foxImg); // 狐アイコン画像の登録
-  for(let i = 0; i < 3; i++){
-    myShader.setUniform('pokeImg_' + i.toString(), pokeImgs[i]);
-  }
-  //myShader.setUniform('pokeImgs', pokeImgs); // ポケモンアイコンの画像
   //noLoop();
 }
 
