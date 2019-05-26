@@ -22,7 +22,7 @@ let fs =
 "precision mediump float;" +
 "varying vec3 v;" +
 "void main(){" +
-"  gl_FragColor = vec4(v.x, v.y, v.z, 1.0);" +
+"  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
 "}";
 
 function setup(){
@@ -41,6 +41,7 @@ function draw(){
   myShader.setUniform("rotate_y", make_rotate(1, frameCount * 1.5 + 60));
   myShader.setUniform("rotate_z", make_rotate(2, frameCount));
   box();
+  //sphere();
 }
 
 function make_rotate(index, angle){
@@ -52,4 +53,9 @@ function make_rotate(index, angle){
   }else if(index === 0){
     return [1, 0, 0, 0, cos(angle), sin(angle), 0, -sin(angle), cos(angle)]; // x軸周りの回転
   }
+}
+
+function make_scale(sx, sy, sz){
+  // 拡大縮小
+  return [sx, 0, 0, 0, sy, 0, 0, 0, sz];
 }

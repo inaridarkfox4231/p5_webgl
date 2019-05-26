@@ -52,7 +52,7 @@ let fs =
 "uniform float radius[2];" +
 "uniform float dists[3];" +
 "uniform sampler2D button;" +
-"uniform sampler2D foxImg;" +
+"uniform sampler2D baseImg;" +
 "varying vec2 vTextureCoord;" +
 "uniform float mode;" +
 "const int ITERATIONS = 64;" +
@@ -123,7 +123,7 @@ let fs =
 "    if(vPos.x < 0.0){" +
 "      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);" +
 "    }else{" +
-"      vec4 color = texture2D(foxImg, vPos.xy);" +
+"      vec4 color = texture2D(baseImg, vPos.xy);" +
 "      if(step(0.1, color.w) * step(-0.1, vPos.y) == 0.0){" +
 "        float i2 = mod(vPos.z, 2.0);" +
 "        gl_FragColor = vec4(((1.0 - i2) * color_1 + i2 * color_2), 1.0);" +
@@ -143,7 +143,7 @@ function preload(){
     allImg[i] = loadImage("./assets/text" + i + ".png");
   }
   for(let i = 0; i < 3; i++){ img[i] = allImg[i]; }
-  foxImg = loadImage("./assets/foxImage.PNG");
+  foxImg = loadImage("./assets/icon_2.PNG");
 }
 
 function setup(){
@@ -157,7 +157,7 @@ function setup(){
   myShader.setUniform('color_1', hsv_to_rgb(hArray[ci], sArray[ci], vArray[ci]));
   myShader.setUniform('color_2', hsv_to_rgb(hArray[ci], sArray[ci] + sDiffArray[ci], vArray[ci] + vDiffArray[ci]));
   setParameter(); // こんなかんじで。
-  myShader.setUniform('foxImg', foxImg); // 狐アイコン画像の登録
+  myShader.setUniform('baseImg', foxImg); // 狐アイコン画像の登録
   //noLoop();
 }
 
