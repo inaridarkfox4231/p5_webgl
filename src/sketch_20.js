@@ -143,7 +143,7 @@ function preload(){
     allImg[i] = loadImage("./assets/text" + i + ".png");
   }
   for(let i = 0; i < 3; i++){ img[i] = allImg[i]; }
-  foxImg = loadImage("./assets/icon_2.PNG");
+  foxImg = loadImage("./assets/icon_4.PNG");
 }
 
 function setup(){
