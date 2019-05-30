@@ -37,7 +37,8 @@ function draw(){
   background(70, 30, 100);
   //m.rot_z(60);
   //m.mul(scl(0.5, 1, 1));
-  m.par(sin(frameCount * 2), cos(frameCount * 3), sin(frameCount));
+  //m.par(sin(frameCount * 2), cos(frameCount * 3), sin(frameCount));
+  m.rot(0, 0, 1, frameCount * 4);
   myShader.setUniform("mat", m.e);
   triangle(0, 0, 0, 0, 0, 0);
 }
@@ -101,10 +102,18 @@ class m4{
   rot(a, b, c, angle){
     // 行列の内容をrot(a, b, c, angle)にする((a, b, c) != (0, 0, 0)前提)
     this.init();
-    if(a === 0 && b === 0){
-      if(c < 0){ angle = -angle; }
-      this.rot_z(angle); return;
-    }
+    let s1 = cos(angle), s2 = sin(angle);
+    let norm = Math.sqrt(a * a + b * b + c * c);
+    a = a / norm, b = b / norm, c = c / norm;
+    this.e[0] = a * a * (1 - s1) + s1;
+    this.e[1] = a * b * (1 - s1) + s2 * c;
+    this.e[2] = a * c * (1 - s1) - s2 * b;
+    this.e[4] = a * b * (1 - s1) - s2 * c;
+    this.e[5] = b * b * (1 - s1) + s1;
+    this.e[6] = b * c * (1 - s1) + s2 * a;
+    this.e[8] = a * c * (1 - s1) + s2 * b;
+    this.e[9] = b * c * (1 - s1) - s2 * a;
+    this.e[10] = c * c * (1 - s1) + s1;
   }
   par(dx, dy, dz){
     // 行列の内容を平行移動(dx, dy, dz)にする
@@ -149,17 +158,25 @@ function scl(sx, sy, sz){
 function rot(a, b, c, angle){
   // (x, y, z)周りにangle回転する行列・・
   let m = new m4();
-  if(a === 0 && b === 0){
-    if(c < 0){ return rot_z(-angle); }
-    return rot_z(angle);
-  }
   let phi = acos(c / Math.sqrt(a * a + b * b + c * c));
   let psi = atan2(b, a);
-  m.mul(rot_z(psi));
+  /*m.mul(rot_z(psi));
   m.mul(rot_y(-phi));
   m.mul(rot_z(angle));
   m.mul(rot_y(phi));
-  m.mul(rot_z(-psi));
+  m.mul(rot_z(-psi));*/
+  let s1 = cos(angle), s2 = sin(angle);
+  let norm = Math.sqrt(a * a + b * b + c * c);
+  a = a / norm, b = b / norm, c = c / norm;
+  m.e[0] = a * a * (1 - s1) + s1;
+  m.e[1] = a * b * (1 - s1) + s2 * c;
+  m.e[2] = a * c * (1 - s1) - s2 * b;
+  m.e[4] = a * b * (1 - s1) - s2 * c;
+  m.e[5] = b * b * (1 - s1) + s1;
+  m.e[6] = b * c * (1 - s1) + s2 * a;
+  m.e[8] = a * c * (1 - s1) + s2 * b;
+  m.e[9] = b * c * (1 - s1) - s2 * a;
+  m.e[10] = c * c * (1 - s1) + s1;
   return m;
 }
 function par(dx, dy, dz){
