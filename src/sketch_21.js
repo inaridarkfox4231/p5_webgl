@@ -4,6 +4,7 @@
 'use strict';
 let myShader;
 let m;
+let ang_u = 0, ang_v = 0;
 
 let vs =
 "precision mediump float;" +
@@ -38,9 +39,13 @@ function draw(){
   //m.rot_z(60);
   //m.mul(scl(0.5, 1, 1));
   //m.par(sin(frameCount * 2), cos(frameCount * 3), sin(frameCount));
-  m.rot(0, 0, 1, frameCount * 4);
+  m.rot(cos(ang_u) * sin(ang_v), sin(ang_u) * sin(ang_v), cos(ang_v), frameCount * 2);
   myShader.setUniform("mat", m.e);
   triangle(0, 0, 0, 0, 0, 0);
+  if(keyIsDown(UP_ARROW)){ ang_u += 1; }
+  else if(keyIsDown(DOWN_ARROW)){ ang_u -= 1; }
+  else if(keyIsDown(RIGHT_ARROW)){ ang_v += 1; }
+  else if(keyIsDown(LEFT_ARROW)){ ang_v -= 1; }
 }
 
 // 行列の成分から行列を作る操作が0, 1, 2, 3が縦の一列目、4, 5, 6, 7が縦の二列目、という感じなので、
@@ -192,4 +197,8 @@ function keyTyped(){
   }else if(key === 'w'){
     loop();
   }
+}
+
+function keyPressed(){
+
 }

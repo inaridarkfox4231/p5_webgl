@@ -13,13 +13,7 @@ let vs =
 let fs =
 "precision mediump float;" +
 "void main(){" +
-"  float c[3];" +
-"  float v = 0.0;" +
-"  for(int i = 0; i < 3; i++){" +
-"    v += 0.2;" +
-"    c[i] = v;" +
-"  }" +
-"  gl_FragColor = vec4(c[0], c[1], c[2], 1.0);" +
+"  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
 "}";
 
 function setup(){
@@ -28,6 +22,7 @@ function setup(){
   noStroke();
   myShader = createShader(vs, fs);
   shader(myShader);
+  noLoop();
 }
 
 function draw(){

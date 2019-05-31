@@ -1,12 +1,10 @@
 // 今回はちょっと趣向を変えて
 // たくさんのボールが色とか大きさとか位置とか変えながらぐるぐる回る感じ
 // 飽きた　疲れた　もういや　しにたい
+// 色で遊ぶ
 'use strict';
 
 let myShader;
-let cxArray = new Array(20);
-let cyArray = new Array(20);
-let radius = new Array(20);
 
 let vs =
 "precision mediump float;" +
@@ -17,30 +15,18 @@ let vs =
 
 let fs =
 "precision mediump float;" +
-"const int N = 20;" +
-"uniform float cx[N];" +
-"uniform float cy[N];" +
-"uniform float r[N];" +
+"uniform vec2 resolution;" +
+"const float PI = 3.14159;" +
+"float atan2(float y, float x){" +
+"  if(x == 0.0){ if(y > 0.0){ return PI / 2.0; }else if(y < 0.0){ return -PI / 2.0; }else{ return 0.0; } }" +
+"  return atan(y, x);" +
+"}" +
 "void main(){" +
-"  float x = gl_FragCoord.x;" +
-"  float y = gl_FragCoord.y;" +
-"  for(int i = 0; i < N; i++){" +
-"    if((cx[i] - x) * (cx[i] - x) + (cy[i] - y) * (cy[i] - y) < r[i] * r[i]){" +
-"      gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); break;" +
-"    }else{" +
-"      gl_FragColor = vec4(0.8, 0.8, 1.0, 1.0);" +
-"    }" +
-"  }" +
+"  vec2 pos = ((gl_FragCoord.xy * 2.0) - resolution) / min(resolution.x, resolution.y);" +
+"  float c = (atan2(pos.y, pos.x) / PI + 1.0) / 2.0;" +
+"  float r = sqrt(pos.x * pos.x + pos.y * pos.y) / 1.4142;" +
+"  gl_FragColor = vec4((c + r) / 2.0, c * r, r, 1.0);" +
 "}";
-/*
-"  for(int i = 0; i < 3; i++){" +
-"    if((cx[i] - x) * (cx[i] - x) + (cy[i] - y) * (cy[i] - y) < 400.0){" +
-"      gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0); break;" +
-"    }else{" +
-"      gl_FragColor = vec4(0.8, 0.8, 1.0, 1.0);" +
-"    }" +
-"  }" +
-*/
 
 function setup(){
   createCanvas(400, 400, WEBGL);
@@ -49,12 +35,11 @@ function setup(){
   noStroke();
   myShader = createShader(vs, fs);
   shader(myShader);
-  _initialize();
+  myShader.setUniform("resolution", [width, height]);
   noLoop();
 }
 
 function draw(){
   background(70, 30, 100);
-  _diff();
   quad(1, 1, -1, 1, -1, -1, 1, -1);
 }
