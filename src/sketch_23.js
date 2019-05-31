@@ -5,35 +5,39 @@
 let myShader;
 let dft;
 let rot;
+let move;
 
 let vs =
 "precision mediump float;" +
 "attribute vec3 aPosition;" +
 "uniform mat4 dft;" +
 "uniform mat4 rot;" +
+"uniform mat4 move;" +
 "varying vec3 vPos;" +
 "void main(){" +
-"  gl_Position = rot * dft * vec4(aPosition, 1.0);" +
+"  gl_Position = move * rot * dft * vec4(aPosition, 1.0);" +
 "  vPos = aPosition;" +
 "}";
 
 let fs =
 "precision mediump float;" +
 "varying vec3 vPos;" +
+"uniform vec3 color;" +
 "void main(){" +
-"  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
+"  gl_FragColor = vec4(color, 1.0);" +
 "}";
 
 function setup(){
-  createCanvas(400, 400, WEBGL);
+  createCanvas(600, 600, WEBGL);
   colorMode(HSB, 100);
   angleMode(DEGREES);
   myShader = createShader(vs, fs);
   shader(myShader);
   dft = new mat4();
   rot = new m4();
-  dft.scl(0.1, 0.1, 1.0);
-  dft.par(-0.05, -0.05, 0.0);
+  move = new m4();
+  dft.par(-0.5, -0.5, 0.0); // 平行移動して中心に持ってくる
+  dft.scl(0.05, 0.05, 1.0); // 大きさを1/10にする
   myShader.setUniform("dft", dft.e);
   //noLoop();
 }
@@ -42,8 +46,46 @@ function draw(){
   background(70, 30, 100);
   rot.rot_z(frameCount * 2);
   myShader.setUniform("rot", rot.e);
+  let dx, dy;
+  for(let i = 0; i < 4; i++){
+    for(let k = (frameCount % 20) / 200; k < 1.5; k += 0.1){
+      dx = cos(90 * i + 360 * k);
+      dy = sin(90 * i + 360 * k);
+      move.par(dx * k, dy * k, 0.0);
+      myShader.setUniform("move", move.e);
+      myShader.setUniform("color", [i * 0.15, i * 0.15, 1.0]);
+      rect(0, 0, 0, 0);
+    }
+  }
+  for(let i = 0; i < 4; i++){
+    for(let k = (frameCount % 20) / 200; k < 1.5; k += 0.1){
+      dx = cos(90 * i - 360 * k);
+      dy = sin(90 * i - 360 * k);
+      move.par(dx * k, dy * k, 0.0);
+      myShader.setUniform("move", move.e);
+      myShader.setUniform("color", [1.0, i * 0.15, i * 0.15]);
+      rect(0, 0, 0, 0);
+    }
+  }
+}
+/*
+for(let i = -6; i <= 6; i++){
+  for(let k = -6; k <= 6; k++){
+    move.par(i * 0.15, k * 0.15, 0);
+    myShader.setUniform("move", move.e);
+    rect(0, 0, 0, 0);
+  }
+}
+
+let dx, dy;
+for(let i = 0; i < 24; i++){
+  dx = cos(15 * i);
+  dy = sin(15 * i);
+  move.par(dx * 0.4 * (1 - cos(frameCount * 4)), dy * 0.4 * (1 - cos(frameCount * 4)), 0);
+  myShader.setUniform("move", move.e);
   rect(0, 0, 0, 0);
 }
+*/
 
 // まず平行移動して原点中心にする
 // サイズを1/10にする
@@ -178,10 +220,18 @@ class mat4{
 
   }
   scl(sx, sy, sz){
-    for(let i = 0; i < 3; i++){
-      this.e[i] *= sx;
-      this.e[i + 4] *= sy;
-      this.e[i + 8] *= sz;
+    for(let i = 0; i < 4; i++){
+      this.e[4 * i] *= sx;
+      this.e[4 * i + 1] *= sy;
+      this.e[4 * i + 2] *= sz;
     }
+  }
+}
+
+function keyTyped(){
+  if(key === 'q'){
+    noLoop();
+  }else if(key === 'w'){
+    loop();
   }
 }
