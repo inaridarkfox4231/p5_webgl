@@ -1,11 +1,12 @@
-// 点とか線とかいろいろ
-// 何がしたいんだっけ・・・・・？
+// 衝突までやってみる（？）
 'use strict';
 
 let myShader;
 let dft;
 let rot;
 let move;
+
+let mySquare;
 
 let vs =
 "precision mediump float;" +
@@ -40,61 +41,32 @@ function setup(){
   dft.scl(0.05, 0.05, 1.0); // 大きさを1/10にする
   myShader.setUniform("dft", dft.e);
   //noLoop();
+  mySquare = new square(width / 2, height / 2, 0, 0, 1);
 }
 
 function draw(){
   background(70, 30, 100);
   rot.rot_z(frameCount * 2);
   myShader.setUniform("rot", rot.e);
-  let dx, dy;
-  for(let i = 0; i < 4; i++){
-    for(let k = (frameCount % 20) / 200; k < 1.5; k += 0.1){
-      dx = cos(90 * i + 360 * k);
-      dy = sin(90 * i + 360 * k);
-      move.par(dx * k, dy * k, 0.0);
-      myShader.setUniform("move", move.e);
-      myShader.setUniform("color", [i * 0.15, i * 0.15, 1.0]);
-      rect(0, 0, 0, 0);
-    }
-  }
-  for(let i = 0; i < 4; i++){
-    for(let k = (frameCount % 20) / 200; k < 1.5; k += 0.1){
-      dx = cos(90 * i - 360 * k);
-      dy = sin(90 * i - 360 * k);
-      move.par(dx * k, dy * k, 0.0);
-      myShader.setUniform("move", move.e);
-      myShader.setUniform("color", [1.0, i * 0.15, i * 0.15]);
-      rect(0, 0, 0, 0);
-    }
-  }
+  mySquare.update();
+  mySquare.render();
 }
 
-/*
-for(let i = -6; i <= 6; i++){
-  for(let k = -6; k <= 6; k++){
-    move.par(i * 0.15, k * 0.15, 0);
+class square{
+  constructor(x, y, r, g, b){
+    this.pos = createVector(x, y);
+    this.colorArray = [r, g, b];
+  }
+  update(){
+    move.par(0.4, -0.4, 0.0);
+  }
+  render(){
     myShader.setUniform("move", move.e);
+    myShader.setUniform("color", this.colorArray);
     rect(0, 0, 0, 0);
   }
 }
 
-let dx, dy;
-for(let i = 0; i < 24; i++){
-  dx = cos(15 * i);
-  dy = sin(15 * i);
-  move.par(dx * 0.4 * (1 - cos(frameCount * 4)), dy * 0.4 * (1 - cos(frameCount * 4)), 0);
-  myShader.setUniform("move", move.e);
-  rect(0, 0, 0, 0);
-}
-*/
-
-// まず平行移動して原点中心にする
-// サイズを1/10にする
-// ここまでがデフォルトなので行列の形で保持しておく
-// moveに使うのは別の行列でこれに加工してたとえば回転とかさせる感じ（回転部分を毎フレーム更新）
-// 回転した後上方向に平行移動とか？それも組み合わせて・・
-
-// 改良して、たとえばrot_xなら左からrot_xに相当する行列を掛けるようにするとかした方がよさそう。
 class m4{
   constructor(){
     this.e = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
