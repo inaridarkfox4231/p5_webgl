@@ -12,6 +12,8 @@ let vs =
 
 let fs =
 "precision mediump float;" +
+"uniform float fc;" +
+"uniform vec2 resolution;" +
 "void main(){" +
 "  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
 "}";
@@ -27,5 +29,7 @@ function setup(){
 
 function draw(){
   background(70, 30, 100);
+  myShader.setUniform("fc", frameCount);
+  myShader.setUniform("resolution", [width, height]);
   box();
 }
