@@ -28,7 +28,7 @@ let fs =
 "  return box(_st, vec2(_size, _size / 4.0)) + box(_st, vec2(_size / 4.0, _size));" +
 "}" +
 "void main(){" +
-"  vec2 st = gl_FragCoord.xy / resolution.xy;" +
+"  vec2 st = gl_FragCoord.xy * 0.5 / resolution.xy;" + // なんか知らんけどgl_FragCoordの値が2倍になってるんよね。
 "  vec3 color = vec3(0.0);" +
 "  float t = fc * 0.05;" +
 "  vec2 translate = vec2(cos(t), sin(t));" +
