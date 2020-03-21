@@ -1,29 +1,11 @@
-// レイマーチングやり直し
+// sketch_37.jsの修正。平行光線を使ってみる。
+// これにより球がきちんと正円で表現される。
 
-// ライティングまで行きたい
+// このテンプレ使えるな・・とりあえずしばらくは平行光線でいいでしょう。
+// カメラの位置をぐるぐるする場合イテレーションは使えないので注意。
 
-// 対称性使って20個くらい回したい。できるかね。できそう？？
-// とりあえず6個でしょ馬鹿
-
-// アイデアとしては、与えられたpに対して、z軸周りに回転させて、angle = fc * 0.02があるんだけど、
-// angle±PI/6のところにこれを回転で移して（行列掛ける）、移した回数を記録しておいて、
-// 回数に応じてhueを決める。また、法線を取るためには・・んー。どうしよ？あー、cも回転させるんだ？
-
-// 円環領域やってみるか（スピンオフ企画）
-// 中心から広げていく。力技でやる。
-// 半径が相似なので配列は要らない。内側からチェックしていくだけ。5回くらいできたらいいね。5x20で100個。そんな多くない。
-
-// 黒いぶつぶつがうざい・・なんか、光が届いてない判定になってるぽい。反射回数が足りてないんかな。
-
-// イテレーション回数は全然問題なかったです。threshold、しきい値に達したらマーチングループを終了するようにしたらぶつぶつ消えました。
-// 不必要にループさせすぎて誤差が発生したのが原因だったっぽい。球同士近付いてるんでそこら辺でしょうね。やっぱ丸写しは駄目だね・・・。
-
-// まあ実現したいアイデアだいたい実現できたんでとりあえず満足かな（球が歪んじゃうのは・・これ真上からray飛ばせば問題ないんじゃないって思ったけどね・・）
-// そうなると法線、そうよね、そうだよ、真上からとばせばいいんじゃん。歪むの嫌ならそうすればいい、
-// 結局嘘ついてるのは変わんないし見栄えがすべてなんだから全然問題ない、変なとこでリアリティ追及しても意味ないでしょ、ねぇ。そう思う。
-
-// 飛行機雲なんて青バックに白い球這わせれば完成、それでいいんだよ。めんどうくさいこと考えなくても。ねぇ。
-// 現実の青空が真っ青なんだから何の工夫が要るのって話でしょ。あほくさ。
+// イメージ的には半径1の球の中ですべてが展開されていて、それをどこから見るかをcDirが決める。
+// cDirと反対方向に1.0だけ中心から戻った場所がcPosになる。上と右をy,xとしてこれも定めておく。これをいじると見える世界が回転する。
 
 p5.DisableFriendlyErrors = true;
 'use strict';
@@ -43,9 +25,10 @@ let fs =
 "uniform vec2 resolution;" +
 "uniform vec2 mouse;" +
 "const float pi = 3.14159;" +
-"const float val = 20.0;" + // 個数
-"const float baum = 8.0;" + // バウムクーヘンの周回数（とりあえず3で）
-"const float rotateAngle = 2.0 * pi / val;" + // 回転角
+"const float val = 20.0;" + // セグメント当たりの輪っかを成す球の個数
+"const float baum = 8.0;" + // バウムクーヘンの周回数（最終的に8で）
+// 回転角
+"const float rotateAngle = 2.0 * pi / val;" +
 // z軸周りの回転を行う2次行列
 "const mat2 rotate = mat2(cos(rotateAngle), -sin(rotateAngle), sin(rotateAngle), cos(rotateAngle));" +
 // z軸周りの回転を行う3次行列(rotateと逆にしてある)
@@ -55,7 +38,7 @@ let fs =
 // イテレーション終了条件となるしきい値
 "const float threshold = 0.001;" +
 // 光
-"const vec3 lightDir = normalize(vec3(-1.0, 1.0, 1.0));" + // 光を当てる方向の逆ベクトル
+"const vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));" + // 光を当てる方向の逆ベクトル
 // 法線ベクトル関連
 "const float delta = 0.0001;" + // 微小変分
 "const vec3 dx = vec3(delta, 0.0, 0.0);" + // x方向の微小変位
@@ -110,7 +93,8 @@ let fs =
 // fragment position.
 "  vec2 p = (gl_FragCoord.xy - resolution) / min(resolution.x, resolution.y);" + // gl_FragCoordの値がなぜか2倍になってしまうので普通に引いてる
 // radius, size, center.
-"  float radius = 2.0;" +
+// 半径をradiusRatioで1.0を割った値にしてみる感じで。
+"  float radius = 1.0 / pow(radiusRatio, baum);" +
 "  float size = 0.9 * radius * sin(pi / val);" +
 "  float angle = fc * 0.02;" +
 "  vec3 center = vec3(radius * cos(angle), radius * sin(angle), 0.0);" +
@@ -127,14 +111,14 @@ let fs =
 "    repeatCount += 1.0;" +
 "  }" +
 // camera.
-"  vec3 cPos = vec3(0.0, 0.0, 23.0);" +  // カメラの位置
-"  vec3 cDir = vec3(0.0, 0.0, -1.0);" +  // 見つめる方向（z軸負方向）
-"  vec3 cUp = vec3(0.0, 1.0, 0.0);" +  // 前を向いていると考えた時の天井（y軸正方向）
-"  vec3 cSide = cross(cDir, cUp);" + // cDirとcUpに直交するベクトルを取る（横方向）
-"  float targetDepth = 1.0;" + // 深度
-// ray.つまり目線。図示するとわかるが（上にy,右にx,手前にzみたいに描く）これはカメラ位置からz負に1だけ進んだところの
-// -1～1ｘ-1～1の正方形（x=2の中）をスクリーンとしてその上の点に向かう目線みたいなやつ。
-"  vec3 ray = normalize(cSide * p.x + cUp * p.y + cDir * targetDepth);" +
+// 平行光線なので先にcDirとcUpを決める。cross(cDir, cUp)でcSideを出す。
+// rayはcDirそのもの。cPosはcSide * p.x + cUp * p.y - cDirで与えられる感じ。
+// 平行なので球の半径が1.0で、だからdepthには意味がないのでこれでいいですね。
+"  vec3 cDir = vec3(0.0, 0.0, -1.0);" +
+"  vec3 cUp = vec3(0.0, 1.0, 0.0);" +
+"  vec3 cSide = cross(cDir, cUp);" +
+"  vec3 ray = cDir;" +
+"  vec3 cPos = cSide * p.x + cUp * p.y - cDir;" + // 視点はcSideとcUpが定める平面をcDirと逆方向に1.0だけ戻った場所。
 // marching loop. （進行処理）
 "  float distance = 0.0;" + // レイとオブジェクト間の最短距離
 "  float rLen = 0.0;" + // レイに継ぎ足す長さ

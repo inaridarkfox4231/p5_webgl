@@ -4,6 +4,10 @@
 // 多角形ちょろいな・・正四面体やるか・・・・ひぇっ。
 // 先に球の複製とかする。
 
+// 多角形これじゃダメ。なぜなら鈍角の場合は両方適するから。それらの最小値が必要。
+// 具体的には、areaCheckがtrueを返すものがあればそれらに対応した線分との距離の最小値を取る。
+// しかしすべてfalseの場合は内部にあるので0.0を返す感じ。それで塗りつぶしになる。
+
 p5.DisableFriendlyErrors = true;
 'use strict';
 
@@ -42,26 +46,32 @@ let fs =
 "}" +
 // 三角形判定。a0, a1, a2はこの順で上から見て時計回りに配置されているとする。
 "float distanceWithTriangle(vec2 a0, vec2 a1, vec2 a2, vec2 p){" +
-"  if(areaCheck(a0, a1, p)){ return distanceWithLine(a0, a1, p); }" +
-"  if(areaCheck(a1, a2, p)){ return distanceWithLine(a1, a2, p); }" +
-"  if(areaCheck(a2, a0, p)){ return distanceWithLine(a2, a0, p); }" +
+"  float d = 999999.9;" +
+"  if(areaCheck(a0, a1, p)){ d = min(d, distanceWithLine(a0, a1, p)); }" +
+"  if(areaCheck(a1, a2, p)){ d = min(d, distanceWithLine(a1, a2, p)); }" +
+"  if(areaCheck(a2, a0, p)){ d = min(d, distanceWithLine(a2, a0, p)); }" +
+"  if(d < 999999.9){ return d; }" +
 "  return 0.0;" +
 "}" +
 // 凸四角形。a0, a1, a2, a3はこの順で時計回り。
 "float distanceWithTetragon(vec2 a0, vec2 a1, vec2 a2, vec2 a3, vec2 p){" +
-"  if(areaCheck(a0, a1, p)){ return distanceWithLine(a0, a1, p); }" +
-"  if(areaCheck(a1, a2, p)){ return distanceWithLine(a1, a2, p); }" +
-"  if(areaCheck(a2, a3, p)){ return distanceWithLine(a2, a3, p); }" +
-"  if(areaCheck(a3, a0, p)){ return distanceWithLine(a3, a0, p); }" +
+"  float d = 999999.9;" +
+"  if(areaCheck(a0, a1, p)){ d = min(d, distanceWithLine(a0, a1, p)); }" +
+"  if(areaCheck(a1, a2, p)){ d = min(d, distanceWithLine(a1, a2, p)); }" +
+"  if(areaCheck(a2, a3, p)){ d = min(d, distanceWithLine(a2, a3, p)); }" +
+"  if(areaCheck(a3, a0, p)){ d = min(d, distanceWithLine(a3, a0, p)); }" +
+"  if(d < 999999.9){ return d; }" +
 "  return 0.0;" +
 "}" +
 // 凸五角形とか。a0, a1, a2, a3, a4はこの順で時計回り。
 "float distanceWithPentagon(vec2 a0, vec2 a1, vec2 a2, vec2 a3, vec2 a4, vec2 p){" +
-"  if(areaCheck(a0, a1, p)){ return distanceWithLine(a0, a1, p); }" +
-"  if(areaCheck(a1, a2, p)){ return distanceWithLine(a1, a2, p); }" +
-"  if(areaCheck(a2, a3, p)){ return distanceWithLine(a2, a3, p); }" +
-"  if(areaCheck(a3, a4, p)){ return distanceWithLine(a3, a4, p); }" +
-"  if(areaCheck(a4, a0, p)){ return distanceWithLine(a4, a0, p); }" +
+"  float d = 999999.9;" +
+"  if(areaCheck(a0, a1, p)){ d = min(d, distanceWithLine(a0, a1, p)); }" +
+"  if(areaCheck(a1, a2, p)){ d = min(d, distanceWithLine(a1, a2, p)); }" +
+"  if(areaCheck(a2, a3, p)){ d = min(d, distanceWithLine(a2, a3, p)); }" +
+"  if(areaCheck(a3, a4, p)){ d = min(d, distanceWithLine(a3, a4, p)); }" +
+"  if(areaCheck(a4, a0, p)){ d = min(d, distanceWithLine(a4, a0, p)); }" +
+"  if(d < 999999.9){ return d; }" +
 "  return 0.0;" +
 "}" +
 // hsb型のvec3をrgbにする魔法のコード
