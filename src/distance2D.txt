@@ -1,0 +1,96 @@
+2D距離関数
+
+http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+
+Circle-exact（円）
+
+float sdCircle( vec2 p, float r )
+{
+  return length(p) - r;
+}
+
+これは多分(0.0, 0.0)が中心でrが半径で、原点中心半径rの円だね。
+pが(x, y)でこれと原点との距離からrを引くと円との距離が出る。
+内側にあるとマイナスなっちゃうけど周との距離ってことだし
+
+float sdCircle( in vec2 p, in float r )
+{
+    return length(p)-r;
+}
+
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+	vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
+
+	float d = sdCircle(p,0.5);
+
+	// coloring
+    vec3 col = vec3(1.0) - sign(d)*vec3(0.4,0.7,0.1);
+    col *= 1.0 - exp(-3.0*abs(d));
+	col *= 0.8 + 0.2*cos(150.0*d);
+	col = mix( col, vec3(1.0), 1.0-smoothstep(0.0,0.01,abs(d)) );
+
+	fragColor = vec4(col,1.0);
+}
+
+可視化するコードも読み解いてみたい。
+dが負の場合も考慮してる（円の内側）
+vec3(0.1, 0.4, 0.7)は特定色でそれにdの符号掛けて1.0から引く、さらに遠くに行くほど減衰する指数のファクターを掛ける・・？？
+・・・
+わからねー
+
+書いたらその通りになったけど理屈が謎すぎる
+smoothstepは0.0未満で0で0.01以上で1だから白い線を与えているのは多分ここ。colになったりvec3(1.0), これが白だからね。
+最初の行、signは1とか-1を返すから内側だとこれ1に・・1.4とか1.7になる？で、小さくしてる・・で、cos(150.0*d)のところ。
+これは1.0と0.6の間を周期的に行ったり来たりするようにすることで帯状の模様ができるようにしているみたい。
+だから150のところを小さくすると帯が太くなるんじゃない。逆に大きくすると細くなるんだろう。（なった）
+cosは周期的だからそのままdが・・うん。
+指数のとこ、dが0に近いとほぼ1でそうなるとファクターはほぼ0でしょ、周の近くで黒っぽくなってるのはたぶんこれが溝を作ってるんだと思う。
+だから-3.0を-1.0とかにするとこの黒い幅が太くなると思う。
+mixが反応するのも周の近くだけ。その外側とか内側、帯からちょっとでも離れたところではcolがそのまま採用されてるんだね（おわり）
+
+Segment-exact（線分）
+
+float sdSegment( in vec2 p, in vec2 a, in vec2 b )
+{
+    vec2 pa = p-a, ba = b-a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h );
+}
+
+hは0.0以下の時は0.0になるし1.0以上の時は1.0になる。0.0以下のはpがa側にあるってことでaとの距離が返るし、1.0以上のはp-bの長さ、つまりbとの距離ね。
+間の時は、p-aをb-aのh倍だけずらして・・つまりpから垂線を下ろしたその足ね。
+
+カラーリングはこちら
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+	vec2 p = (2.0*fragCoord-iResolution.xy)/iResolution.y;
+    p *= 1.4;
+
+    vec2 v1 = cos( iTime + vec2(0.0,2.00) + 0.0 );
+	vec2 v2 = cos( iTime + vec2(0.0,1.50) + 1.5 );
+    float th = 0.1*(0.5+0.5*sin(iTime*1.1));
+
+	float d = udSegment( p, v1, v2 ) - th;
+
+    vec3 col = vec3(1.0) - sign(d)*vec3(0.1,0.4,0.7);
+	col *= 1.0 - exp(-3.0*abs(d));
+	col *= 0.8 + 0.2*cos(120.0*d);
+	col = mix( col, vec3(1.0), 1.0-smoothstep(0.0,0.015,abs(d)) );
+
+	fragColor = vec4(col,1.0);
+}
+
+箱
+各辺が座標軸に平行。bは多分ひとつの頂点に向かうベクトルね。bは第一象限みたい。それでまずpをabsして第一象限に運んでる。
+そこからは場合分け。まずbの右上領域の場合は普通に距離dが返るようになってる。
+次に左上領域の場合、maxでx成分が0.0にされてy成分だけ残る、それを与えるので垂直距離に・・右下も同じ。
+左下（内部）なら第1項は0.0で消える、そのあとは・・d.xとd.yは共に負だけど、その絶対値が小さい方が採用されてちゃんと周との距離になるのよ。
+
+float sdBox( in vec2 p, in vec2 b )
+{
+    vec2 d = abs(p)-b;
+    return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
+}
