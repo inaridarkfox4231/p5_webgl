@@ -22,11 +22,11 @@ let fs =
 "precision mediump float;" +
 "varying vec3 v;" +
 "void main(){" +
-"  gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);" +
+"  gl_FragColor = vec4(v.x, v.y, v.z, 1.0);" +
 "}";
 
 function setup(){
-  createCanvas(400, 400, WEBGL);
+  createCanvas(600, 600, WEBGL);
   colorMode(HSB, 100);
   noStroke();
   angleMode(DEGREES);
